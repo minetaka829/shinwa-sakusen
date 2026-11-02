@@ -1,0 +1,5 @@
+{
+  "name": "波音リツ クイーン",
+  "speaker": 65,
+  "params": { "speedScale": 1.08, "intonationScale": 1.15, "pitchScale": -0.02, "prePhonemeLength": 0.05, "postPhonemeLength": 0.1 }
+}

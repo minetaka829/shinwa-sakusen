@@ -46,29 +46,56 @@ h1{margin:0;font-family:var(--disp);font-weight:400;line-height:1.15}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 
-/* console */
-.top{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.top .ttl{display:flex;flex-direction:column;gap:2px;min-width:0}
-.top .op{font-family:var(--disp);font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.chip{font-size:11.5px;font-weight:900;border-radius:999px;padding:4px 10px;background:var(--panel2);color:var(--sub);white-space:nowrap}
-.chip.on{background:rgba(127,201,122,.18);color:var(--green)}
-.chip.off{background:rgba(229,99,75,.18);color:var(--red)}
+/* start-screen boss */
 .boss{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:start}
 .boss svg{width:96px;height:96px}
 .bubble{background:var(--fg);color:#141A24;border-radius:18px;border-top-left-radius:4px;padding:14px 16px;font-size:clamp(17px,4.4vw,21px);line-height:1.65;font-weight:700;min-height:96px;white-space:pre-wrap}
 .bubble .who{display:block;font-size:12px;font-weight:900;color:#6A7488;letter-spacing:.1em;margin-bottom:4px}
+
+/* console: fits one screen, never scrolls. The commander fills the middle. */
+.console{height:100vh;height:100dvh;overflow:hidden;max-width:720px;margin:0 auto;display:grid;grid-template-rows:auto 1fr auto auto;gap:10px;
+  padding:10px max(16px,env(safe-area-inset-right,0px)) 14px max(16px,env(safe-area-inset-left,0px))}
+.bar{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:12px;min-width:0}
+.bar .ttl{display:flex;flex-direction:column;gap:2px;min-width:0}
+.bar .op{font-family:var(--disp);font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .warn{font-size:12px;font-weight:900;color:var(--red)}
+.dist{display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:0}
+.dist .to{font-size:12px;font-weight:900;color:var(--sub);max-width:34vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dist .km{font-family:var(--disp);font-size:28px;line-height:1;color:var(--gold);font-variant-numeric:tabular-nums}
+.dist .km small{font-family:var(--body);font-size:13px;font-weight:900;color:var(--sub);margin-left:3px}
+.menuBtn{width:52px;padding:0}
+.menuBtn svg{width:24px;height:24px}
+.menuBtn.flash{animation:flash 1s ease 4}
+.stage{min-height:0;display:grid;place-items:center}
+.stage svg{width:100%;height:100%;max-width:min(92vw,520px);max-height:100%;animation:bob 3.6s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-6px)}}
 .mouth{transition:transform .08s}
-.talking .mouth{animation:talk .22s infinite alternate}
-@keyframes talk{from{transform:scaleY(.3)}to{transform:scaleY(1.2)}}
-.target .lbl{font-size:12px;font-weight:900;letter-spacing:.12em;color:var(--sub)}
-.target .name{font-size:clamp(22px,6vw,30px);font-weight:900;line-height:1.3}
-.target .dist{font-family:var(--disp);font-size:clamp(40px,12vw,64px);line-height:1;font-variant-numeric:tabular-nums;color:var(--gold)}
-.target .dist small{font-family:var(--body);font-size:16px;font-weight:900;color:var(--sub);margin-left:4px}
-.mode{display:inline-flex;align-self:flex-start;font-size:13px;font-weight:900;border-radius:999px;padding:5px 12px;background:var(--panel2)}
-.mode.drive{color:var(--c3)}.mode.walk{color:var(--green)}.mode.near{color:var(--gold)}
+.talking .mouth{animation:talk .2s infinite alternate}
+@keyframes talk{from{transform:scaleY(.25)}to{transform:scaleY(1.25)}}
+.glint{animation:glint 7s ease-in-out infinite}
+@keyframes glint{0%,86%{transform:translateX(-30px);opacity:0}90%{opacity:.9}96%,100%{transform:translateX(40px);opacity:0}}
+.sub{background:var(--fg);color:#141A24;border-radius:20px;padding:12px 18px 14px;height:calc(var(--subFs,24px)*1.6*3 + 46px);overflow:hidden;display:flex;flex-direction:column;gap:4px}
+.sub .who{font-size:12px;font-weight:900;color:#6A7488;letter-spacing:.1em}
+.sub #say{font-size:var(--subFs,24px);line-height:1.6;font-weight:900;word-break:auto-phrase}
+.done{min-height:68px;font-size:21px}
+@media (orientation:landscape) and (max-height:560px){
+  .console{max-width:none;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);grid-template-rows:auto 1fr auto}
+  .bar{grid-column:1/-1}
+  .stage{grid-row:2/4}
+  .sub{align-self:center}
+}
+
+/* menu sheet (for the passenger) */
+.sheet{position:fixed;inset:0;z-index:10;background:rgba(8,12,18,.6);display:flex;align-items:flex-end;justify-content:center}
+.sheetIn{width:100%;max-width:720px;max-height:92dvh;overflow:auto;background:var(--bg);border-radius:24px 24px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px}
+.sheetHead{display:flex;align-items:center;justify-content:space-between}
+.sheetHead span{font-family:var(--disp);font-size:18px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:11.5px;font-weight:900;border-radius:999px;padding:4px 10px;background:var(--panel2);color:var(--sub);white-space:nowrap}
+.chip.on{background:rgba(127,201,122,.18);color:var(--green)}
+.chip.off{background:rgba(229,99,75,.18);color:var(--red)}
 .onsite{border:2px solid var(--green)}
-.onsite .story{font-size:17px;line-height:1.85}
+.onsite .name{font-size:22px;font-weight:900}
 .mission{background:rgba(240,185,74,.12);border:1.5px dashed var(--gold);border-radius:14px;padding:12px 14px;font-size:16px;line-height:1.7;font-weight:700}
 .mission b{color:var(--gold)}
 .viv{font-size:13.5px;line-height:1.6;background:var(--panel2);border-radius:10px;padding:8px 12px}
@@ -90,10 +117,6 @@ h1{margin:0;font-family:var(--disp);font-weight:400;line-height:1.15}
 .stampwrap svg{width:min(70vw,300px);height:auto;animation:press .7s cubic-bezier(.3,1.6,.5,1) both}
 @keyframes press{0%{opacity:0;transform:scale(2.2) rotate(-25deg)}100%{opacity:1;transform:rotate(-8deg)}}
 details summary{cursor:pointer;font-weight:900;color:var(--sub);min-height:40px;display:flex;align-items:center}
-@media (min-width:860px) and (orientation:landscape){
-  .screen.console{max-width:1100px;display:grid;grid-template-columns:1.1fr 1fr;align-items:start}
-  .screen.console .top{grid-column:1/-1}
-}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -104,11 +127,10 @@ details summary{cursor:pointer;font-weight:900;color:var(--sub);min-height:40px;
   <span class="eyebrow">極秘 ・ 別班 島根作戦</span>
   <h1>作戦名：<br>神話の国</h1>
   <div class="boss">
-    <svg viewBox="0 0 120 120" aria-hidden="true" id="bossStart"></svg>
+    <svg viewBox="0 0 240 240" aria-hidden="true" id="bossStart"></svg>
     <div class="bubble"><span class="who">ヤマタ司令</span>こちらヤマタ司令。3日間、きみたちの任務を音声で案内する。運転手は画面にさわるな。操作は同乗者にまかせろ。</div>
   </div>
   <div class="card">
-    <div class="field"><label for="codename">チームのコードネーム</label><input id="codename" maxlength="12" placeholder="例：イナダ" autocomplete="off"></div>
     <div class="field"><label for="daysel">今日の作戦</label>
       <select id="daysel"><option value="0">1日目 12/5 土　第1章 オロチと鉄の国</option><option value="1">2日目 12/6 日　第2章 あの世の入口</option><option value="2">3日目 12/7 月　第3章 国ゆずりと黄泉の穴</option></select></div>
     <div class="field"><span style="font-size:13px;font-weight:900;color:var(--sub)">モード</span>
@@ -117,38 +139,31 @@ details summary{cursor:pointer;font-weight:900;color:var(--sub);min-height:40px;
     </div>
   </div>
   <button class="primary" id="go" style="min-height:64px;font-size:20px">任務開始</button>
-  <p class="small">「任務開始」を押すと、位置情報と画面の点灯を許可する確認が出ます。音声はスマホの読み上げ機能を使うので、マナーモードを解除して音量を上げてください。</p>
+  <p class="small">「任務開始」を押すと、位置情報と画面の点灯を許可する確認が出ます。マナーモードを解除して、音量を上げてください。</p>
 </section>
 
 <!-- ============ CONSOLE ============ -->
-<section class="screen console" id="console" hidden>
-  <div class="top">
-    <div class="ttl"><span class="eyebrow" id="dayLbl">1日目</span><span class="op" id="chapLbl">第1章 オロチと鉄の国</span></div>
-    <div class="chips"><span class="chip" id="cGps">GPS 待機</span><span class="chip" id="cWake">画面ON</span><span class="chip" id="cMode" hidden>デモ</span></div>
-  </div>
+<section class="console" id="console" hidden>
+  <header class="bar">
+    <div class="ttl"><span class="eyebrow" id="dayLbl">1日目</span><span class="op" id="chapLbl">第1章 オロチと鉄の国</span><span class="warn" id="warn" hidden></span></div>
+    <div class="dist"><span class="to" id="tName"></span><span class="km" id="tDist">--<small>km</small></span></div>
+    <button class="menuBtn" id="menuBtn" aria-label="メニュー"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
+  </header>
+  <div class="stage" id="bossBox"><svg viewBox="0 0 240 240" aria-hidden="true" id="boss"></svg></div>
+  <div class="sub" aria-live="polite"><span class="who">ヤマタ司令</span><span id="say"></span></div>
+  <button class="primary done" id="doneBtn" hidden>任務完了</button>
+</section>
 
-  <div class="left" style="display:flex;flex-direction:column;gap:14px">
-    <div class="boss" id="bossBox">
-      <svg viewBox="0 0 120 120" aria-hidden="true" id="boss"></svg>
-      <div class="bubble" aria-live="polite"><span class="who">ヤマタ司令</span><span id="say"></span></div>
-    </div>
-    <div class="card target" id="targetCard">
-      <span class="lbl" id="tLbl">次の任務地</span>
-      <span class="name" id="tName"></span>
-      <span class="dist" id="tDist">--<small>km</small></span>
-      <span class="mode drive" id="tMode">走行中</span>
-    </div>
+<!-- ============ MENU (passenger) ============ -->
+<div class="sheet" id="menu" hidden>
+  <div class="sheetIn" role="dialog" aria-label="メニュー">
+    <div class="sheetHead"><span>メニュー</span><button id="menuClose">閉じる</button></div>
     <div class="card onsite" id="onsite" hidden>
       <span class="eyebrow" style="color:var(--green)">現地任務</span>
-      <span class="name" style="font-size:24px;font-weight:900" id="oName"></span>
-      <p class="story" id="oStory" style="margin:0"></p>
+      <span class="name" id="oName"></span>
       <div class="viv" id="oViv" hidden></div>
       <div class="mission" id="oMission"></div>
-      <button class="primary" id="doneBtn" style="min-height:60px;font-size:18px">任務完了</button>
     </div>
-  </div>
-
-  <div class="right" style="display:flex;flex-direction:column;gap:14px">
     <div class="card bgm" id="bgmCard">
       <div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span class="small">車内BGM</span><span class="nm" id="bgmName"></span></div>
       <a class="btn primary" id="bgmBtn" href="#" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>Spotify</a>
@@ -170,12 +185,14 @@ details summary{cursor:pointer;font-weight:900;color:var(--sub);min-height:40px;
           <button id="talkTgl" aria-pressed="true">道中トーク ON</button>
           <button id="changeDay">日にち・モードを変える</button>
           <button id="resetDay">今日の進みぐあいをリセット</button>
+          <div class="chips"><span class="chip" id="cGps">GPS 待機</span><span class="chip" id="cWake">画面ON</span><span class="chip" id="cMode" hidden>デモ</span></div>
           <p class="small" id="geoInfo">位置情報：-</p>
+          <p class="small">音声：VOICEVOX:波音リツ</p>
         </div>
       </details>
     </div>
   </div>
-</section>
+</div>
 
 <div class="stampwrap" id="stamp" hidden><svg viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="88" fill="none" stroke="#E5634B" stroke-width="8"/><circle cx="100" cy="100" r="74" fill="none" stroke="#E5634B" stroke-width="3"/><text x="100" y="92" text-anchor="middle" font-size="34" font-weight="900" fill="#E5634B" font-family="Dela Gothic One, sans-serif">任務</text><text x="100" y="136" text-anchor="middle" font-size="34" font-weight="900" fill="#E5634B" font-family="Dela Gothic One, sans-serif">完了</text></svg></div>
 
@@ -192,7 +209,7 @@ var BGM={
 var START_POS={0:[34.3965,132.4596],1:null,2:null}; // day1 starts from Hiroshima; other days from previous night's stay
 var DAYS=[
 {label:'1日目 12/5 土',chap:'第1章 オロチと鉄の国',col:'var(--c1)',
- open:'こちらヤマタ司令。コードネーム{CN}、聞こえるか。本日の作戦は「オロチと鉄の国」。奥出雲の山に、8つの頭をもつ大蛇の伝説を追う。まずは雲南の鉄の町へ向かえ。BGMは「任務開始」だ。',
+ open:'こちらヤマタ司令。エージェント諸君、聞こえるか。本日の作戦は「オロチと鉄の国」。奥出雲の山に、8つの頭をもつ大蛇の伝説を追う。まずは雲南の鉄の町へ向かえ。BGMは「任務開始」だ。',
  talk:['豆知識だ。奥出雲は、昔ながらのたたら製鉄が今も行われている、日本でただひとつの地域だ。','豆知識。スサノオがオロチのしっぽを切ると、中から剣が出てきた。川で砂鉄がとれる鉄の国だったから、という説もある。','VIVANTの監督は、ドラマ「砂の器」を撮ったころから、奥出雲と縁があるそうだ。'],
  m:[
   {n:'鉄の歴史博物館・田部家の土蔵',ll:[35.16706,132.84966],r:400,bgm:'start',
@@ -220,7 +237,7 @@ var DAYS=[
    ms:'しっかり休むこと。'}
  ]},
 {label:'2日目 12/6 日',chap:'第2章 あの世の入口',col:'var(--c2)',
- open:'おはよう、コードネーム{CN}。本日の作戦は「あの世の入口」。まずは空から降りてきた鉄の神に会いに行く。',
+ open:'おはよう、エージェント諸君。本日の作戦は「あの世の入口」。まずは空から降りてきた鉄の神に会いに行く。',
  talk:['豆知識だ。黄泉の国から逃げるとき、イザナギは追っ手に桃の実を投げて追いはらったといわれる。','佐太神社の神在祭は、地元では「お忌みさん」と呼ばれている。','宍道湖のシジミは、全国の生産量の約4割をしめる。'],
  m:[
   {n:'金屋子神社',ll:[35.24489,133.10967],r:500,bgm:'tatara',
@@ -254,7 +271,7 @@ var DAYS=[
    ms:'宍道湖七珍を全部言えるか挑戦せよ。スズキ、モロゲエビ、ウナギ、アマサギ、シラウオ、コイ、シジミ。'}
  ]},
 {label:'3日目 12/7 月',chap:'第3章 国ゆずりと黄泉の穴',col:'var(--c3)',
- open:'最終日だ、コードネーム{CN}。本日の作戦は「国ゆずりと黄泉の穴」。島根半島を西へ進む。BGMは「日本海ミッション」だ。',
+ open:'最終日だ、エージェント諸君。本日の作戦は「国ゆずりと黄泉の穴」。島根半島を西へ進む。BGMは「日本海ミッション」だ。',
  talk:['豆知識だ。出雲大社の大しめ縄は、2026年の7月に、8年ぶりにかけかえられたばかりだ。','日御碕では、夕日は神聖なものとされてきた。','石見銀山は、2007年に世界遺産になった。'],
  m:[
   {n:'一畑薬師',ll:[35.49863,132.87418],r:450,bgm:'sea',
@@ -286,9 +303,36 @@ var DAYS=[
    ms:'坑道の中を通りぬけよ。'},
   {n:'広島',ll:[34.3965,132.4596],r:4000,bgm:'home',final:true,
    ap:'帰還ルートに入った。BGMを「帰還」に切りかえよう。みんなで歌いながら帰ろう。運転手、休憩をはさみながら安全に戻れ。',
-   os:'作戦完了。コードネーム{CN}、3日間の任務、おつかれさまでした。オロチ、黄泉の国、国ゆずり。すべての神話をたどりきった。また会おう。',
+   os:'作戦完了。エージェント諸君、3日間の任務、おつかれさまでした。オロチ、黄泉の国、国ゆずり。すべての神話をたどりきった。また会おう。',
    ms:'無事に家に帰ること。'}
  ]}
+];
+
+// Fixed lines the app builds at runtime (the voice generator records these too).
+var LINES={
+  next:function(n){return '次の任務地は、'+n+'だ。';},
+  skipTo:function(n){return 'この任務はとばす。次は、'+n+'だ。';},
+  bgm:function(b){return 'BGMを「'+b+'」に切りかえよう。';},
+  done:'任務完了。よくやった。', autoDone:'任務完了とみなす。', mission:'任務。',
+  dayEnd:'本日の作戦は終了だ。よくやった。明日も同じアプリで「任務開始」を押せ。',
+  allEnd:'全作戦、終了。よくやった。',
+  noGeo:'位置情報が許可されていない。設定で、このアプリに位置情報を許可してくれ。それまでは「着いた」ボタンで進めてよい。'
+};
+// Readings for the voice only; subtitles keep the written form.
+var READ=[
+  [/VIVANT/g,'ヴィヴァン'],[/「F」/g,'「エフ」'],[/BGM/g,'ビージーエム'],
+  [/田部家/g,'たなべけ'],[/櫻井家/g,'さくらいけ'],[/雲南/g,'うんなん'],[/稲田神社/g,'いなたじんじゃ'],
+  [/鬼の舌震/g,'おにのしたぶるい'],[/玉日女/g,'たまひめ'],[/亀嵩/g,'かめだけ'],[/玉峰山荘/g,'ぎょくほうさんそう'],
+  [/金屋子/g,'かなやご'],[/仁多米/g,'にたまい'],[/黄泉比良坂/g,'よもつひらさか'],[/黄泉/g,'よみ'],
+  [/佐太神社/g,'さだじんじゃ'],[/神在祭/g,'かみありさい'],[/川京/g,'かわきょう'],[/宍道湖七珍/g,'しんじこしっちん'],
+  [/宍道湖/g,'しんじこ'],[/奉書焼き/g,'ほうしょやき'],[/一畑薬師/g,'いちばたやくし'],[/本坊書院/g,'ほんぼうしょいん'],
+  [/韓竈神社/g,'からかまじんじゃ'],[/猪目洞窟/g,'いのめどうくつ'],[/日御碕/g,'ひのみさき'],[/経島/g,'ふみしま'],
+  [/石見銀山/g,'いわみぎんざん'],[/龍源寺間歩/g,'りゅうげんじまぶ'],[/大森/g,'おおもり'],[/鉄師/g,'てっし'],
+  [/笹宮/g,'ささのみや'],[/産湯/g,'うぶゆ'],[/卓/g,'すぐる'],[/神楽殿/g,'かぐらでん'],[/お忌みさん/g,'おいみさん'],
+  [/乃木家/g,'のぎけ'],[/乃木/g,'のぎ'],[/明美/g,'あけみ'],[/白鷺/g,'しらさぎ'],[/桂/g,'かつら'],[/社務所/g,'しゃむしょ'],
+  [/奥出雲/g,'おくいずも'],[/吉田町/g,'よしだちょう'],[/間歩/g,'まぶ'],[/釜戸/g,'かまど'],[/諸君/g,'しょくん'],
+  [/空から降り、/g,'空からおり、'],[/大しめ縄/g,'おおしめなわ'],[/中から剣/g,'なかから剣'],[/中は落石/g,'なかは落石'],
+  [/出雲国風土記/g,'いずものくにふどき'],[/門前町/g,'もんぜんまち'],[/社があらわれる/g,'やしろがあらわれる']
 ];
 
 /* ===================== HELPERS ===================== */
@@ -298,38 +342,85 @@ function load(){try{return JSON.parse(localStorage.getItem('mythops-v1')||'{}')|
 var demoMode=false;
 function save(){if(demoMode)return;try{localStorage.setItem('mythops-v1',JSON.stringify(ST));}catch(e){}}
 var ST=load(); ST.done=ST.done||{}; ST.idx=ST.idx||{};
-function cn(s){return s.replace(/\{CN\}/g,ST.cn||'チーム');}
 
-/* boss (original guide character: a small white serpent agent) */
-var BOSS='<circle cx="60" cy="62" r="50" fill="#1E2A3D"/>'+
- '<path d="M28 104 C20 84 36 72 52 78 C70 84 92 80 92 62" stroke="#E9F1EA" stroke-width="16" fill="none" stroke-linecap="round"/>'+
- '<ellipse cx="66" cy="44" rx="30" ry="24" fill="#E9F1EA"/>'+
- '<rect x="40" y="34" width="52" height="13" rx="6" fill="#141A24"/><rect x="44" y="36" width="18" height="8" rx="3" fill="#3B4C66"/><rect x="70" y="36" width="18" height="8" rx="3" fill="#3B4C66"/>'+
- '<path d="M36 40 C30 44 30 54 36 58" stroke="#141A24" stroke-width="3" fill="none"/><circle cx="37" cy="59" r="3.5" fill="#F0B94A"/>'+
- '<ellipse class="mouth" style="transform-origin:66px 58px" cx="66" cy="58" rx="7" ry="3" fill="#C2452D"/>'+
- '<path d="M58 22 l4 -8 l4 8 M70 22 l4 -8 l4 8" stroke="#F0B94A" stroke-width="3" fill="none" stroke-linejoin="round"/>';
-$('boss').innerHTML=BOSS; $('bossStart').innerHTML=BOSS;
+/* boss (original guide character: a white serpent commander in shades and a headset) */
+var BOSS='<defs><radialGradient id="halo" cx="50%" cy="45%" r="55%"><stop offset="0" stop-color="#26364F"/><stop offset="1" stop-color="#0E1520" stop-opacity="0"/></radialGradient>'+
+ '<linearGradient id="skin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F7FBF8"/><stop offset="1" stop-color="#CADBCF"/></linearGradient>'+
+ '<clipPath id="lens"><rect x="88" y="80" width="104" height="26" rx="10"/></clipPath></defs>'+
+ '<circle cx="120" cy="120" r="116" fill="url(#halo)"/>'+
+ '<ellipse cx="124" cy="214" rx="86" ry="14" fill="#05080D" opacity=".55"/>'+
+ '<path d="M58 204 C98 222 168 222 196 198 C214 180 212 160 200 150" stroke="#D6E5DA" stroke-width="28" fill="none" stroke-linecap="round"/>'+
+ '<path d="M54 196 C40 160 80 146 120 156 C166 168 196 150 186 118" stroke="url(#skin)" stroke-width="34" fill="none" stroke-linecap="round"/>'+
+ '<ellipse cx="140" cy="94" rx="64" ry="50" fill="url(#skin)"/>'+
+ '<path d="M122 48 l7 -15 l7 15 M146 46 l7 -15 l7 15" stroke="#F0B94A" stroke-width="5" fill="none" stroke-linejoin="round"/>'+
+ '<path d="M84 84 C78 54 104 38 134 40" stroke="#141A24" stroke-width="6" fill="none" stroke-linecap="round"/>'+
+ '<rect x="72" y="78" width="18" height="30" rx="8" fill="#141A24"/>'+
+ '<path d="M80 108 C82 126 94 134 110 134" stroke="#141A24" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="112" cy="134" r="5" fill="#F0B94A"/>'+
+ '<rect x="84" y="76" width="112" height="34" rx="14" fill="#141A24"/>'+
+ '<rect x="92" y="81" width="42" height="24" rx="9" fill="#2E3D55"/><rect x="146" y="81" width="42" height="24" rx="9" fill="#2E3D55"/>'+
+ '<g clip-path="url(#lens)"><g transform="skewX(-20)"><rect class="glint" x="150" y="70" width="9" height="46" fill="#fff"/></g></g>'+
+ '<path d="M190 84 C200 80 206 74 208 68" stroke="#141A24" stroke-width="3" fill="none" stroke-linecap="round"/>'+
+ '<ellipse class="mouth" style="transform-origin:156px 126px" cx="156" cy="126" rx="14" ry="5" fill="#C2452D"/>';
+// gradient/clip ids must be unique per copy (a copy inside a hidden screen breaks the other one)
+function boss(p){return BOSS.replace(/id="(\w+)"/g,'id="'+p+'$1"').replace(/url\(#(\w+)\)/g,'url(#'+p+'$1)');}
+$('boss').innerHTML=boss('a'); $('bossStart').innerHTML=boss('b');
 
-/* ===================== VOICE ===================== */
-var voiceOn=true, jaVoice=null, lastLine='';
+/* ===================== VOICE =====================
+   Every line is pre-recorded with VOICEVOX (voice/*.m4a, listed in voice/index.json).
+   Lines are played one sentence at a time and the sentence on air is the subtitle.
+   A sentence with no recording falls back to the phone's own speech engine. */
+var voiceOn=true, jaVoice=null, lastLine='', VOICE={};
+fetch('voice/index.json').then(function(r){return r.json();}).then(function(j){VOICE=j;}).catch(function(){});
 function pickVoice(){var v=(window.speechSynthesis&&speechSynthesis.getVoices())||[];jaVoice=v.filter(function(x){return /^ja/i.test(x.lang);}).sort(function(a,b){return (b.localService?1:0)-(a.localService?1:0);})[0]||null;}
 if(window.speechSynthesis){pickVoice();speechSynthesis.onvoiceschanged=pickVoice;}
-function say(text,opts){
-  text=cn(text); lastLine=text; $('say').textContent=text;
-  if(!voiceOn||!window.speechSynthesis){return;}
-  if(!(opts&&opts.queue)) speechSynthesis.cancel();
-  var u=new SpeechSynthesisUtterance(text.replace(/VIVANT/g,'ヴィヴァン').replace(/F」/g,'エフ」'));
-  u.lang='ja-JP'; if(jaVoice) u.voice=jaVoice; u.rate=1.02; u.pitch=0.95;
-  u.onstart=function(){$('bossBox').classList.add('talking');};
-  u.onend=u.onerror=function(){if(!speechSynthesis.speaking)$('bossBox').classList.remove('talking');};
-  speechSynthesis.speak(u);
+try{ if(navigator.audioSession) navigator.audioSession.type='transient'; }catch(e){}
+var player=new Audio(); player.preload='auto';
+var queue=[], speaking=false, gen=0, gapTimer=null;
+// Recordings are loaded as blobs: iOS Safari will not play audio from the offline cache otherwise.
+var clips={};
+function clip(f){ return clips[f]||(clips[f]=fetch('voice/'+f).then(function(r){ if(!r.ok)throw 0; return r.blob(); }).then(function(b){ return URL.createObjectURL(b); }).catch(function(e){ delete clips[f]; throw e; })); }
+function sentences(t){ return (t.match(/[^。！？]+[。！？]*」?/g)||[]).map(function(s){return s.trim();}).filter(Boolean); }
+function reading(s){ READ.forEach(function(r){ s=s.replace(r[0],r[1]); }); return s; }
+function talking(on){ $('bossBox').classList.toggle('talking',on); }
+function fitSub(){
+  var box=$('say').parentNode, fs=Math.min(28,Math.max(19,window.innerWidth*0.058));
+  box.style.setProperty('--subFs',fs+'px');
+  while(fs>15 && $('say').scrollHeight>box.clientHeight-30){ fs-=1; box.style.setProperty('--subFs',fs+'px'); }
 }
+function stopVoice(){ gen++; clearTimeout(gapTimer); queue=[]; speaking=false; player.pause(); if(window.speechSynthesis)speechSynthesis.cancel(); talking(false); }
+function say(text,opts){
+  if(opts&&opts.queue&&speaking){ lastLine+=text; } else { stopVoice(); lastLine=text; }
+  queue=queue.concat(sentences(text));
+  if(!speaking) nextSentence();
+}
+function nextSentence(){
+  var my=++gen, s=queue.shift();
+  if(s==null){ speaking=false; talking(false); return; }
+  speaking=true; $('say').textContent=s; fitSub();
+  function after(){ if(my!==gen)return; talking(false); gapTimer=setTimeout(function(){ if(my===gen) nextSentence(); },280); }
+  function silent(){ talking(false); gapTimer=setTimeout(function(){ if(my===gen) nextSentence(); },Math.max(1800,s.length*170)); }
+  if(!voiceOn) return silent();
+  if(VOICE[s]){
+    clip(VOICE[s]).then(function(url){
+      if(my!==gen) return;
+      player.onended=after; player.onerror=after;
+      player.src=url; talking(true);
+      player.play().catch(function(){ if(my===gen) silent(); });
+      if(queue[0]&&VOICE[queue[0]]) clip(VOICE[queue[0]]);
+    }).catch(function(){ if(my===gen) silent(); });
+  } else if(window.speechSynthesis){
+    var u=new SpeechSynthesisUtterance(reading(s));
+    u.lang='ja-JP'; if(jaVoice) u.voice=jaVoice; u.rate=1.02;
+    u.onend=u.onerror=after; talking(true); speechSynthesis.speak(u);
+  } else silent();
+}
+window.addEventListener('resize',fitSub);
 
 /* ===================== WAKE LOCK ===================== */
 var wake=null;
 function keepAwake(){
-  if(!('wakeLock' in navigator)){$('cWake').textContent='画面ON 非対応';$('cWake').className='chip off';return;}
-  navigator.wakeLock.request('screen').then(function(w){wake=w;$('cWake').textContent='画面ON';$('cWake').className='chip on';w.addEventListener('release',function(){$('cWake').textContent='画面ON 切れ';$('cWake').className='chip off';});}).catch(function(){$('cWake').textContent='画面ON 不可';$('cWake').className='chip off';});
+  if(!('wakeLock' in navigator)){$('cWake').textContent='画面ON 非対応';$('cWake').className='chip off';refreshWarn();return;}
+  navigator.wakeLock.request('screen').then(function(w){wake=w;$('cWake').textContent='画面ON';$('cWake').className='chip on';refreshWarn();w.addEventListener('release',function(){$('cWake').textContent='画面ON 切れ';$('cWake').className='chip off';refreshWarn();});}).catch(function(){$('cWake').textContent='画面ON 不可';$('cWake').className='chip off';refreshWarn();});
 }
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&running)keepAwake();});
 
@@ -343,26 +434,20 @@ function key(i){return day+'-'+i;}
 function setTarget(i,announce){
   idx=Math.max(0,Math.min(D().m.length-1,i)); ST.idx[day]=idx; save();
   phase='drive'; slowSince=null; leftSince=null;
-  $('onsite').hidden=true; $('targetCard').hidden=false;
+  $('onsite').hidden=true; $('doneBtn').hidden=true;
   $('tName').textContent=M().n;
   var b=BGM[M().bgm];
   $('bgmName').textContent=b.n; $('bgmBtn').href=b.u;
-  if(lastBgm!==M().bgm){ if(lastBgm!==null){$('bgmCard').classList.remove('flash');void $('bgmCard').offsetWidth;$('bgmCard').classList.add('flash');} lastBgm=M().bgm; }
+  if(lastBgm!==M().bgm){ if(lastBgm!==null){['bgmCard','menuBtn'].forEach(function(id){var e=$(id);e.classList.remove('flash');void e.offsetWidth;e.classList.add('flash');});} lastBgm=M().bgm; }
   renderProgress();
-  if(announce) say('次の任務地は、'+M().n+'。'+(pos?'あと'+fmtDistSpeech(hav(pos,M().ll))+'だ。':''));
+  if(announce) say(LINES.next(M().n));
   updateDist();
 }
 function fmtDist(m){return m>=1000?{v:(m/1000).toFixed(m>=10000?0:1),u:'km'}:{v:String(Math.round(m/10)*10),u:'m'};}
-function fmtDistSpeech(m){return m>=1000?(m/1000).toFixed(m>=10000?0:1)+'キロ':Math.round(m/10)*10+'メートル';}
 function updateDist(){
   if(!pos){$('tDist').innerHTML='--<small>km</small>';return;}
   var d=hav(pos,M().ll), f=fmtDist(d);
   $('tDist').innerHTML=f.v+'<small>'+f.u+'</small>';
-  var walking=speed<2.5;
-  var mode=$('tMode');
-  if(d<=M().r){mode.textContent=walking?'到着・停車中':'目的地周辺';mode.className='mode near';}
-  else if(walking&&speed>0.4){mode.textContent='徒歩';mode.className='mode walk';}
-  else {mode.textContent='走行中';mode.className='mode drive';}
 }
 function tick(){
   if(!pos) return;
@@ -385,20 +470,20 @@ function tick(){
 function arrive(){
   phase='onsite'; slowSince=null;
   var m=M();
-  $('targetCard').hidden=true; $('onsite').hidden=false;
-  $('oName').textContent=m.n; $('oStory').textContent=cn(m.os);
+  $('onsite').hidden=false; $('doneBtn').hidden=false;
+  $('oName').textContent=m.n;
   $('oViv').hidden=!m.viv; $('oViv').textContent=m.viv||'';
   $('oMission').innerHTML='<b>任務</b>　'+escapeHtml(m.ms);
   $('doneBtn').textContent=m.final?'本日の作戦 終了':'任務完了';
-  say(m.os+'　任務。'+m.ms);
+  say(m.os+LINES.mission+m.ms);
 }
 function escapeHtml(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function complete(auto){
   ST.done[key(idx)]=1; save();
   var st=$('stamp'); st.hidden=false; setTimeout(function(){st.hidden=true;},1500);
-  if(M().final){ if(!auto) say(day<2?'本日の作戦は終了だ。よくやった。明日も同じアプリで「任務開始」を押せ。':'全作戦、終了。よくやった。'); phase='end'; renderProgress(); return; }
+  if(M().final){ if(!auto) say(day<2?LINES.dayEnd:LINES.allEnd); phase='end'; $('doneBtn').hidden=true; renderProgress(); return; }
   var next=idx+1;
-  setTimeout(function(){ say((auto?'任務完了とみなす。':'任務完了。よくやった。')+'次の任務地は、'+D().m[next].n+'だ。'+(BGM[D().m[next].bgm].n!==BGM[M().bgm].n?'BGMを「'+BGM[D().m[next].bgm].n+'」に切りかえよう。':'')); setTarget(next,false); },300);
+  setTimeout(function(){ say((auto?LINES.autoDone:LINES.done)+LINES.next(D().m[next].n)+(BGM[D().m[next].bgm].n!==BGM[M().bgm].n?LINES.bgm(BGM[D().m[next].bgm].n):'')); setTarget(next,false); },300);
 }
 function renderProgress(){
   var ms=D().m, n=0;
@@ -415,12 +500,12 @@ function onFix(p){
   var sp=p.coords.speed;
   if((sp==null||isNaN(sp)) && lastFix){var dt=(t-lastFix.t)/1000; sp=dt>0?hav(lastFix.c,c)/dt:0;}
   speed=sp||0; pos=c; lastFix={c:c,t:t};
-  $('cGps').textContent='GPS ±'+Math.round(p.coords.accuracy||0)+'m'; $('cGps').className='chip on';
+  $('cGps').textContent='GPS ±'+Math.round(p.coords.accuracy||0)+'m'; $('cGps').className='chip on';refreshWarn();
   $('geoInfo').textContent='位置情報：精度 約'+Math.round(p.coords.accuracy||0)+'m・速度 '+Math.round(speed*3.6)+'km/h';
   tick();
 }
-function onGeoErr(e){ $('cGps').textContent='GPS 不可'; $('cGps').className='chip off';
-  if(e.code===1) say('位置情報が許可されていない。設定で、このアプリに位置情報を許可してくれ。それまでは「着いた」ボタンで進めてよい。'); }
+function onGeoErr(e){ $('cGps').textContent='GPS 不可'; $('cGps').className='chip off';refreshWarn();
+  if(e.code===1) say(LINES.noGeo); }
 function startGps(){
   if(!('geolocation' in navigator)){onGeoErr({code:0});return;}
   watchId=navigator.geolocation.watchPosition(onFix,onGeoErr,{enableHighAccuracy:true,maximumAge:2000,timeout:20000});
@@ -430,9 +515,9 @@ function startGps(){
 var demoTimer=null, demoPause=0;
 function startDemo(){
   pos=(day===0?START_POS[0]:DAYS[day-1].m[DAYS[day-1].m.length-1].ll).slice();
-  $('cMode').hidden=false; $('cGps').textContent='デモ走行'; $('cGps').className='chip on';
+  $('cMode').hidden=false; $('cGps').textContent='デモ走行'; $('cGps').className='chip on';refreshWarn();
   demoTimer=setInterval(function(){
-    if(phase==='onsite'){ speed=0.8; demoPause+=1; if(demoPause>14){demoPause=0; complete(false);} tick(); return; }
+    if(phase==='onsite'){ speed=0.8; if(!speaking) demoPause+=1; if(demoPause>4){demoPause=0; complete(false);} tick(); return; }
     if(phase==='end'){ speed=0; return; }
     var tgt=M().ll, d=hav(pos,tgt);
     var step=Math.min(d, 900); // ~900 m per second (fast-forward)
@@ -448,7 +533,7 @@ function startTalk(){
   clearInterval(talkTimer);
   talkTimer=setInterval(function(){
     if(!talkOn||phase!=='drive'||!pos) return;
-    if(window.speechSynthesis&&speechSynthesis.speaking) return;
+    if(speaking) return;
     if(hav(pos,M().ll)<Math.max(2500,M().r*5)) return;
     var t=D().talk; say(t[talkI%t.length]); talkI++;
   }, demo?20000:12*60*1000);
@@ -459,7 +544,6 @@ var mode='real';
 $('mReal').onclick=function(){mode='real';$('mReal').setAttribute('aria-pressed','true');$('mDemo').setAttribute('aria-pressed','false');$('modeNote').textContent='位置情報で自動的に進みます。スマホをホルダーに付けて使ってください。';};
 $('mDemo').onclick=function(){mode='demo';$('mDemo').setAttribute('aria-pressed','true');$('mReal').setAttribute('aria-pressed','false');$('modeNote').textContent='家で試す用です。車が高速で自動走行し、各地点で止まって案内します。';};
 (function initStart(){
-  $('codename').value=ST.cn||'';
   var t=new Date(), ds=t.getFullYear()+'-'+(t.getMonth()+1)+'-'+t.getDate();
   var map={'2026-12-5':0,'2026-12-6':1,'2026-12-7':2};
   $('daysel').value=String(map[ds]!=null?map[ds]:(ST.day||0));
@@ -467,13 +551,14 @@ $('mDemo').onclick=function(){mode='demo';$('mDemo').setAttribute('aria-pressed'
 $('go').onclick=function(){
   demo=(mode==='demo');
   if(demoMode&&!demo){ demoMode=false; ST=load(); ST.done=ST.done||{}; ST.idx=ST.idx||{}; }
-  ST.cn=$('codename').value.trim(); day=+$('daysel').value; ST.day=day; save();
-  if(demo){ demoMode=true; ST={cn:ST.cn,day:day,done:{},idx:{}}; }
+  day=+$('daysel').value; ST.day=day; save();
+  if(demo){ demoMode=true; ST={day:day,done:{},idx:{}}; }
   phase='drive'; spokenAp={};
   $('start').hidden=true; $('console').hidden=false;
   keepAwake();
   // unlock speech inside the tap
   if(window.speechSynthesis){var u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u);}
+  player.src='voice/silence.m4a'; player.play().catch(function(){});
   running=true; lastBgm=null;
   var i=ST.idx[day]||0; while(ST.done[key(i)]&&i<D().m.length-1)i++;
   setTarget(i,false);
@@ -482,12 +567,17 @@ $('go').onclick=function(){
   startTalk();
 };
 $('again').onclick=function(){ if(lastLine) say(lastLine); };
-$('voice').onclick=function(){ voiceOn=!voiceOn; this.setAttribute('aria-pressed',String(voiceOn)); this.querySelector('span').textContent=voiceOn?'声 ON':'声 OFF'; if(!voiceOn&&window.speechSynthesis)speechSynthesis.cancel(); };
+$('voice').onclick=function(){ voiceOn=!voiceOn; this.setAttribute('aria-pressed',String(voiceOn)); this.querySelector('span').textContent=voiceOn?'声 ON':'声 OFF'; if(!voiceOn)stopVoice(); };
 $('here').onclick=function(){ if(phase==='drive') arrive(); };
-$('skip').onclick=function(){ if(phase==='end')return; if(M().final){arrive();return;} var n=idx+1; say('この任務はとばす。次は'+D().m[n].n+'だ。'); setTarget(n,false); };
+$('skip').onclick=function(){ if(phase==='end')return; if(M().final){arrive();return;} var n=idx+1; say(LINES.skipTo(D().m[n].n)); setTarget(n,false); };
 $('doneBtn').onclick=function(){ complete(false); };
+$('menuBtn').onclick=function(){ this.classList.remove('flash'); $('menu').hidden=false; };
+$('menuClose').onclick=function(){ $('menu').hidden=true; };
+$('menu').onclick=function(e){ if(e.target===this) this.hidden=true; };
+function refreshWarn(){ var w=['cGps','cWake'].filter(function(id){return $(id).classList.contains('off');}).map(function(id){return $(id).textContent;}); $('warn').hidden=!w.length; $('warn').textContent=w.join('・'); }
+
 $('talkTgl').onclick=function(){ talkOn=!talkOn; this.setAttribute('aria-pressed',String(talkOn)); this.textContent=talkOn?'道中トーク ON':'道中トーク OFF'; };
-$('changeDay').onclick=function(){ clearInterval(demoTimer); clearInterval(talkTimer); if(watchId!=null)navigator.geolocation.clearWatch(watchId); watchId=null; running=false; if(window.speechSynthesis)speechSynthesis.cancel(); $('console').hidden=true; $('start').hidden=false; };
+$('changeDay').onclick=function(){ clearInterval(demoTimer); clearInterval(talkTimer); if(watchId!=null)navigator.geolocation.clearWatch(watchId); watchId=null; running=false; stopVoice(); $('menu').hidden=true; $('console').hidden=true; $('start').hidden=false; };
 $('resetDay').onclick=function(){ if(this.dataset.sure){ Object.keys(ST.done).forEach(function(k){ if(k.indexOf(day+'-')===0) delete ST.done[k]; }); spokenAp={}; save(); setTarget(0,true); delete this.dataset.sure; this.textContent='今日の進みぐあいをリセット'; } else { this.dataset.sure='1'; this.textContent='もう一度押すとリセット'; } };
 
 if('serviceWorker' in navigator){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); }
