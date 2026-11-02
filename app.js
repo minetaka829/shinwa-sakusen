@@ -43,7 +43,20 @@ $('boss').innerHTML=boss('a'); $('bossStart').innerHTML=boss('b');
    The queue holds sentences and sound effects; the sentence on air is the subtitle.
    A sentence with no recording falls back to the phone's own speech engine. */
 var voiceOn=true, jaVoice=null, lastLine=null, VOICE={boss:{},enemy:{},sfx:{}};
-fetch('voice/index.json').then(function(r){return r.json();}).then(function(j){VOICE=j;}).catch(function(){});
+fetch('voice/index.json').then(function(r){return r.json();}).then(function(j){VOICE=j; saveVoices();}).catch(function(){});
+// keep every recording on the phone for places with no signal (the service worker caches each one fetched)
+function saveVoices(){
+  if(!('caches' in window)) return;
+  var files=[]; Object.keys(VOICE).forEach(function(g){ Object.keys(VOICE[g]).forEach(function(k){ var f=VOICE[g][k]; if(files.indexOf(f)<0) files.push(f); }); });
+  caches.open('mythops-voice').then(function(c){ return c.keys(); }).then(function(ks){
+    var have={}; ks.forEach(function(r){ have[r.url.split('/voice/')[1]]=1; });
+    var todo=files.filter(function(f){return !have[f];}), done=files.length-todo.length;
+    function show(){ $('offlineStart').textContent=$('offline').textContent=done>=files.length?'オフライン用の声：保存ずみ（'+files.length+'）':'オフライン用の声：保存中 '+done+' / '+files.length; }
+    show();
+    function worker(){ var f=todo.shift(); if(!f) return Promise.resolve(); return fetch('voice/'+f).then(function(r){ if(r.ok){done++; show();} }).catch(function(){}).then(worker); }
+    return Promise.all([worker(),worker(),worker(),worker()]).then(show);
+  }).catch(function(){});
+}
 function pickVoice(){var v=(window.speechSynthesis&&speechSynthesis.getVoices())||[];jaVoice=v.filter(function(x){return /^ja/i.test(x.lang);}).sort(function(a,b){return (b.localService?1:0)-(a.localService?1:0);})[0]||null;}
 if(window.speechSynthesis){pickVoice();speechSynthesis.onvoiceschanged=pickVoice;}
 try{ if(navigator.audioSession) navigator.audioSession.type='transient'; }catch(e){}

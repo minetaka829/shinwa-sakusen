@@ -1,18 +1,17 @@
 // Offline cache for the app shell (mountain areas may have weak signal).
-const CACHE = 'mythops-v3';
+const CACHE = 'mythops-v4';
+const VOICE_CACHE = 'mythops-voice';
 const SHELL = ['./', './index.html', './story.js', './route.js', './plot.js', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-180.png'];
 
-// The recorded voice is saved up front too, so the commander talks with no signal.
+// Only the app itself is saved at install. The recorded voice (about 1,100 files) is saved
+// afterwards by the page, a few at a time, so one dropped file never blocks the update.
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)
-    .then(() => fetch('./voice/index.json')).then((r) => r.json())
-    .then((idx) => c.addAll(['./voice/index.json', './voice/silence.m4a', ...new Set(Object.values(idx).flatMap((g) => Object.values(g)))].map((f) => f.startsWith('./') ? f : './voice/' + f))))
-    .then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL.concat(['./voice/index.json', './voice/silence.m4a']))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== VOICE_CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -25,7 +24,7 @@ self.addEventListener('fetch', (e) => {
     // recordings never change under the same name: cache first
     e.respondWith(caches.match(req).then((r) => r || fetch(req).then((res) => {
       const copy = res.clone();
-      caches.open(CACHE).then((c) => c.put(req, copy));
+      if (res.ok) caches.open(VOICE_CACHE).then((c) => c.put(req, copy));
       return res;
     })));
   } else if (url.origin === location.origin) {

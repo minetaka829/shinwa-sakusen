@@ -167,6 +167,7 @@ details summary{cursor:pointer;font-weight:900;color:var(--sub);min-height:40px;
   <button class="primary" id="go" style="min-height:64px;font-size:20px">任務開始</button>
   <div class="ctrls"><button id="briefBtn">前夜の指令書を聞く</button><button id="endBtn" hidden>エンディング</button></div>
   <p class="small" id="startNote" role="status"></p>
+  <p class="small" id="offlineStart"></p>
   <p class="small">「任務開始」を押すと、位置情報と画面の点灯を許可する確認が出ます。マナーモードを解除して、音量を上げてください。</p>
 </section>
 
@@ -228,6 +229,7 @@ details summary{cursor:pointer;font-weight:900;color:var(--sub);min-height:40px;
           <button id="resetDay">今日の進みぐあいをリセット</button>
           <div class="chips"><span class="chip" id="cGps">GPS 待機</span><span class="chip" id="cWake">画面ON</span><span class="chip" id="cMode" hidden>デモ</span></div>
           <p class="small" id="geoInfo">位置情報：-</p>
+          <p class="small" id="offline">オフライン用の声：確認中</p>
           <p class="small">音声：VOICEVOX:波音リツ／VOICEVOX:後鬼</p>
         </div>
       </details>
