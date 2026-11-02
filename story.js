@@ -113,6 +113,21 @@ var DAYS=[
 // Fixed lines the app builds at runtime (the voice generator records these too).
 // Spotify 連携のアプリID（developer.spotify.com で作る。空なら連携ボタンを出さない）
 var SPOTIFY_ID='5c8276d0ddd6493d9871b2a417f77616';
+// 場面ごとに Spotify で流す曲（曲ID）。空なら BGM のプレイリストを流す。
+// drive は日ごとの移動曲（順に流れ、走り出すたびに次の曲から）。home は最終日の帰り道。
+var MUSIC={
+  start:['2mQWWS1vVcskzusfFYc48X'],            // VIVANT <Main theme>
+  drive:[
+    ['4kqCv8RG36lOyyBVeDDSKu','6aW22MT7WfGKGuNLL8qWiM','2BgvykwAOMwDVAJUHkW7Hc','7tVDJV2vi7RA5GvkPIcJZ0'], // Father's Land / Chinggis / Strategizing / Energico
+    ['3CXtfPjwO9T9oTRVvwisaU','12TQBxqQQIh9WNrNGwW4RO','3A3EXaTeICkLksqYvE1QCQ','72PKa7ToFbv1nwtDy26J4e'], // Buried Memories / That Nagging Feeling / Cloak and Dagger / Elegy
+    ['4vIAAsUh0KspU5V96qbyXs','5RFWGphg8CyQbFm309trWz','5kEQj3v3mZTYJ6UI41JjGL','0AGXrEfZwyYre93nPGxf11']  // Beginnings / Adagio / Kindred Spirits / A Fleeting Peace
+  ],
+  approach:['38UYmViYj7WpmMOnLc9rtR'],         // Clock's Ticking
+  enemy:['4Q91EpBtceJMctJqw946E4'],            // VIVANT <Aggressive>
+  climax:['1LzfxyAWA6ehJvXmhuinZ7'],           // Fate and Bond
+  ending:['72AAsKGZ7X88SUclIt1x8a'],           // Family Love
+  home:['0ti1VYlV3orikzqVkyXeZ4','0dhG4A3Fs65pX39ZM2NINa','0NfOlrJCyUxfij4dzzyYxM','6LICRNGcA59SARx5j5VXoU'] // 竹内まりや 縁の糸 / いのちの歌 / 人生の扉 / 家に帰ろう
+};
 // 敵の無線で字幕に出す名前
 var ENEMY_NAME='？？？（無線に割り込み）';
 

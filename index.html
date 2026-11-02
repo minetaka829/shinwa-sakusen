@@ -26,8 +26,10 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:var(--body);font-weight:500;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
-body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-.screen{min-height:100%;padding:14px max(16px,env(safe-area-inset-left,0px)) 24px max(16px,env(safe-area-inset-right,0px));max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+/* the notch and home bar are padded inside each screen, so a full-height screen never overflows */
+body{margin:0}
+body:has(#console:not([hidden])){overflow:hidden;position:fixed;inset:0}
+.screen{min-height:100%;padding:calc(14px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-left,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-right,0px));max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 [hidden]{display:none!important}
 button,a.btn{font-family:var(--body);font-weight:900;font-size:16px;min-height:52px;border-radius:14px;border:1.5px solid var(--line);background:var(--panel2);color:var(--fg);padding:0 16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
 button.primary,a.primary{background:var(--gold);border-color:var(--gold);color:var(--goldFg)}
@@ -53,8 +55,8 @@ h1{margin:0;font-family:var(--disp);font-weight:400;line-height:1.15}
 .bubble .who{display:block;font-size:12px;font-weight:900;color:#6A7488;letter-spacing:.1em;margin-bottom:4px}
 
 /* console: fits one screen, never scrolls. The commander fills the middle. */
-.console{height:100vh;height:100dvh;overflow:hidden;max-width:720px;margin:0 auto;display:grid;grid-template-rows:auto 1fr auto auto;gap:10px;
-  padding:10px max(16px,env(safe-area-inset-right,0px)) 14px max(16px,env(safe-area-inset-left,0px))}
+.console{height:100vh;height:100svh;height:100dvh;box-sizing:border-box;overflow:hidden;max-width:720px;margin:0 auto;display:grid;grid-template-rows:auto 1fr auto auto;gap:10px;
+  padding:calc(8px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .bar{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:12px;min-width:0}
 .bar .ttl{display:flex;flex-direction:column;gap:2px;min-width:0}
 .bar .op{font-family:var(--disp);font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
