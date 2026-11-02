@@ -77,6 +77,8 @@ h1{margin:0;font-family:var(--disp);font-weight:400;line-height:1.15}
 .sub{background:var(--fg);color:#141A24;border-radius:20px;padding:12px 18px 14px;height:calc(var(--subFs,24px)*1.6*3 + 46px);overflow:hidden;display:flex;flex-direction:column;gap:4px}
 .sub .who{font-size:12px;font-weight:900;color:#6A7488;letter-spacing:.1em}
 .sub #say{font-size:var(--subFs,24px);line-height:1.6;font-weight:900;word-break:auto-phrase}
+.startBtns{display:flex;gap:8px}
+.startBtns button{flex:1}
 .acts{display:flex;gap:10px}
 .acts .done{flex:1}
 button.done{min-height:68px;font-size:21px}
@@ -165,7 +167,7 @@ details summary{cursor:pointer;font-weight:900;color:var(--sub);min-height:40px;
     </div>
   </div>
   <button class="primary" id="go" style="min-height:64px;font-size:20px">任務開始</button>
-  <div class="ctrls"><button id="briefBtn">前夜の指令書を聞く</button><button id="endBtn" hidden>エンディング</button></div>
+  <div class="startBtns"><button id="briefBtn">前夜の指令書を聞く</button><button id="endBtn" hidden>エンディング</button></div>
   <p class="small" id="startNote" role="status"></p>
   <p class="small" id="offlineStart"></p>
   <p class="small">「任務開始」を押すと、位置情報と画面の点灯を許可する確認が出ます。マナーモードを解除して、音量を上げてください。</p>
