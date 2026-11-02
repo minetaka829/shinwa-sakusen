@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0E1520">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="神話作戦">
+<title>作戦名：神話の国</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<style>
+/* Layout: in-car mission console. One column, big type, nothing needs a tap while driving.
+   Single dark "operations room" look, readable at night and in sun. */
+:root{
+  --bg:#0E1520; --panel:#172131; --panel2:#1E2A3D; --line:#2B3A52; --fg:#F1F3F6; --sub:#A9B4C4;
+  --gold:#F0B94A; --goldFg:#1A1408; --green:#7FC97A; --red:#E5634B; --c1:#F08A62; --c2:#B9A3EF; --c3:#6FC2D8;
+  --disp:'Dela Gothic One','Zen Maru Gothic',sans-serif;
+  --body:'Zen Maru Gothic','Hiragino Maru Gothic ProN','Hiragino Sans',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:var(--body);font-weight:500;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.screen{min-height:100%;padding:14px max(16px,env(safe-area-inset-left,0px)) 24px max(16px,env(safe-area-inset-right,0px));max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+[hidden]{display:none!important}
+button,a.btn{font-family:var(--body);font-weight:900;font-size:16px;min-height:52px;border-radius:14px;border:1.5px solid var(--line);background:var(--panel2);color:var(--fg);padding:0 16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+button.primary,a.primary{background:var(--gold);border-color:var(--gold);color:var(--goldFg)}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+button svg,a svg{width:20px;height:20px;flex:none}
+.eyebrow{font-size:12px;font-weight:900;letter-spacing:.16em;color:var(--gold)}
+h1{margin:0;font-family:var(--disp);font-weight:400;line-height:1.15}
+.small{font-size:13px;color:var(--sub);line-height:1.6}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:10px}
+
+/* start screen */
+.start h1{font-size:clamp(34px,9vw,52px)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:13px;font-weight:900;color:var(--sub)}
+.field input,.field select{font-family:var(--body);font-size:17px;font-weight:700;min-height:52px;border-radius:12px;border:1.5px solid var(--line);background:var(--panel2);color:var(--fg);padding:0 14px;-webkit-user-select:text;user-select:text}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+
+/* console */
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.top .ttl{display:flex;flex-direction:column;gap:2px;min-width:0}
+.top .op{font-family:var(--disp);font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.chip{font-size:11.5px;font-weight:900;border-radius:999px;padding:4px 10px;background:var(--panel2);color:var(--sub);white-space:nowrap}
+.chip.on{background:rgba(127,201,122,.18);color:var(--green)}
+.chip.off{background:rgba(229,99,75,.18);color:var(--red)}
+.boss{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:start}
+.boss svg{width:96px;height:96px}
+.bubble{background:var(--fg);color:#141A24;border-radius:18px;border-top-left-radius:4px;padding:14px 16px;font-size:clamp(17px,4.4vw,21px);line-height:1.65;font-weight:700;min-height:96px;white-space:pre-wrap}
+.bubble .who{display:block;font-size:12px;font-weight:900;color:#6A7488;letter-spacing:.1em;margin-bottom:4px}
+.mouth{transition:transform .08s}
+.talking .mouth{animation:talk .22s infinite alternate}
+@keyframes talk{from{transform:scaleY(.3)}to{transform:scaleY(1.2)}}
+.target .lbl{font-size:12px;font-weight:900;letter-spacing:.12em;color:var(--sub)}
+.target .name{font-size:clamp(22px,6vw,30px);font-weight:900;line-height:1.3}
+.target .dist{font-family:var(--disp);font-size:clamp(40px,12vw,64px);line-height:1;font-variant-numeric:tabular-nums;color:var(--gold)}
+.target .dist small{font-family:var(--body);font-size:16px;font-weight:900;color:var(--sub);margin-left:4px}
+.mode{display:inline-flex;align-self:flex-start;font-size:13px;font-weight:900;border-radius:999px;padding:5px 12px;background:var(--panel2)}
+.mode.drive{color:var(--c3)}.mode.walk{color:var(--green)}.mode.near{color:var(--gold)}
+.onsite{border:2px solid var(--green)}
+.onsite .story{font-size:17px;line-height:1.85}
+.mission{background:rgba(240,185,74,.12);border:1.5px dashed var(--gold);border-radius:14px;padding:12px 14px;font-size:16px;line-height:1.7;font-weight:700}
+.mission b{color:var(--gold)}
+.viv{font-size:13.5px;line-height:1.6;background:var(--panel2);border-radius:10px;padding:8px 12px}
+.bgm{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
+.bgm .nm{font-size:16px;font-weight:900}
+.bgm.flash{animation:flash 1s ease 3}
+@keyframes flash{50%{border-color:var(--gold);background:var(--panel2)}}
+.ctrls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.progress{display:flex;gap:6px;flex-wrap:wrap}
+.progress span{width:22px;height:8px;border-radius:4px;background:var(--line)}
+.progress span.done{background:var(--green)}
+.progress span.cur{background:var(--gold)}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.list li{display:flex;gap:10px;align-items:center;min-height:36px}
+.list li .d{width:12px;height:12px;border-radius:50%;background:var(--line);flex:none}
+.list li.done .d{background:var(--green)}.list li.cur .d{background:var(--gold)}
+.list li.done{color:var(--sub)}
+.stampwrap{position:fixed;inset:0;display:grid;place-items:center;background:rgba(8,12,18,.72);z-index:20}
+.stampwrap svg{width:min(70vw,300px);height:auto;animation:press .7s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes press{0%{opacity:0;transform:scale(2.2) rotate(-25deg)}100%{opacity:1;transform:rotate(-8deg)}}
+details summary{cursor:pointer;font-weight:900;color:var(--sub);min-height:40px;display:flex;align-items:center}
+@media (min-width:860px) and (orientation:landscape){
+  .screen.console{max-width:1100px;display:grid;grid-template-columns:1.1fr 1fr;align-items:start}
+  .screen.console .top{grid-column:1/-1}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ START ============ -->
+<section class="screen start" id="start">
+  <span class="eyebrow">極秘 ・ 別班 島根作戦</span>
+  <h1>作戦名：<br>神話の国</h1>
+  <div class="boss">
+    <svg viewBox="0 0 120 120" aria-hidden="true" id="bossStart"></svg>
+    <div class="bubble"><span class="who">ヤマタ司令</span>こちらヤマタ司令。3日間、きみたちの任務を音声で案内する。運転手は画面にさわるな。操作は同乗者にまかせろ。</div>
+  </div>
+  <div class="card">
+    <div class="field"><label for="codename">チームのコードネーム</label><input id="codename" maxlength="12" placeholder="例：イナダ" autocomplete="off"></div>
+    <div class="field"><label for="daysel">今日の作戦</label>
+      <select id="daysel"><option value="0">1日目 12/5 土　第1章 オロチと鉄の国</option><option value="1">2日目 12/6 日　第2章 あの世の入口</option><option value="2">3日目 12/7 月　第3章 国ゆずりと黄泉の穴</option></select></div>
+    <div class="field"><span style="font-size:13px;font-weight:900;color:var(--sub)">モード</span>
+      <div class="seg" role="group" aria-label="モード"><button type="button" id="mReal" aria-pressed="true">本番（GPS）</button><button type="button" id="mDemo" aria-pressed="false">デモ走行</button></div>
+      <span class="small" id="modeNote">位置情報で自動的に進みます。スマホをホルダーに付けて使ってください。</span>
+    </div>
+  </div>
+  <button class="primary" id="go" style="min-height:64px;font-size:20px">任務開始</button>
+  <p class="small">「任務開始」を押すと、位置情報と画面の点灯を許可する確認が出ます。音声はスマホの読み上げ機能を使うので、マナーモードを解除して音量を上げてください。</p>
+</section>
+
+<!-- ============ CONSOLE ============ -->
+<section class="screen console" id="console" hidden>
+  <div class="top">
+    <div class="ttl"><span class="eyebrow" id="dayLbl">1日目</span><span class="op" id="chapLbl">第1章 オロチと鉄の国</span></div>
+    <div class="chips"><span class="chip" id="cGps">GPS 待機</span><span class="chip" id="cWake">画面ON</span><span class="chip" id="cMode" hidden>デモ</span></div>
+  </div>
+
+  <div class="left" style="display:flex;flex-direction:column;gap:14px">
+    <div class="boss" id="bossBox">
+      <svg viewBox="0 0 120 120" aria-hidden="true" id="boss"></svg>
+      <div class="bubble" aria-live="polite"><span class="who">ヤマタ司令</span><span id="say"></span></div>
+    </div>
+    <div class="card target" id="targetCard">
+      <span class="lbl" id="tLbl">次の任務地</span>
+      <span class="name" id="tName"></span>
+      <span class="dist" id="tDist">--<small>km</small></span>
+      <span class="mode drive" id="tMode">走行中</span>
+    </div>
+    <div class="card onsite" id="onsite" hidden>
+      <span class="eyebrow" style="color:var(--green)">現地任務</span>
+      <span class="name" style="font-size:24px;font-weight:900" id="oName"></span>
+      <p class="story" id="oStory" style="margin:0"></p>
+      <div class="viv" id="oViv" hidden></div>
+      <div class="mission" id="oMission"></div>
+      <button class="primary" id="doneBtn" style="min-height:60px;font-size:18px">任務完了</button>
+    </div>
+  </div>
+
+  <div class="right" style="display:flex;flex-direction:column;gap:14px">
+    <div class="card bgm" id="bgmCard">
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span class="small">車内BGM</span><span class="nm" id="bgmName"></span></div>
+      <a class="btn primary" id="bgmBtn" href="#" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>Spotify</a>
+    </div>
+    <div class="ctrls">
+      <button id="again"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 3-6.2M4 4v5h5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>もう一度</button>
+      <button id="voice" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><span>声 ON</span></button>
+      <button id="here">着いた</button>
+      <button id="skip">この任務をとばす</button>
+    </div>
+    <div class="card">
+      <span class="small" id="progLbl">任務 0 / 0</span>
+      <div class="progress" id="prog"></div>
+      <details><summary>今日の任務一覧</summary><ul class="list" id="list"></ul></details>
+    </div>
+    <div class="card">
+      <details><summary>設定</summary>
+        <div style="display:flex;flex-direction:column;gap:8px;padding-top:6px">
+          <button id="talkTgl" aria-pressed="true">道中トーク ON</button>
+          <button id="changeDay">日にち・モードを変える</button>
+          <button id="resetDay">今日の進みぐあいをリセット</button>
+          <p class="small" id="geoInfo">位置情報：-</p>
+        </div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<div class="stampwrap" id="stamp" hidden><svg viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="88" fill="none" stroke="#E5634B" stroke-width="8"/><circle cx="100" cy="100" r="74" fill="none" stroke="#E5634B" stroke-width="3"/><text x="100" y="92" text-anchor="middle" font-size="34" font-weight="900" fill="#E5634B" font-family="Dela Gothic One, sans-serif">任務</text><text x="100" y="136" text-anchor="middle" font-size="34" font-weight="900" fill="#E5634B" font-family="Dela Gothic One, sans-serif">完了</text></svg></div>
+
+<script>
+/* ===================== DATA ===================== */
+var BGM={
+  start:{n:'別班 任務開始',u:'https://open.spotify.com/playlist/7wXW94nMcNUwJntb68HlVk?utm_source=anthropic&utm_medium=claude&go=1&nap_web=1&request_id=bdcfe93f-bebd-4e31-a012-907aff9ea4ac'},
+  tatara:{n:'たたらの山',u:'https://open.spotify.com/playlist/2cDFl4fCHxK4visAsNvv0a?utm_source=anthropic&utm_medium=claude&go=1&nap_web=1&request_id=454e18b0-aab2-4e68-9003-1b54496dede8'},
+  yomi:{n:'黄泉の国',u:'https://open.spotify.com/playlist/72cht5Mkf5X8Hc2Df2fj61?utm_source=anthropic&utm_medium=claude&go=1&nap_web=1&request_id=d1d3f15c-99f7-44f7-bfbc-d0eef70f6b38'},
+  sea:{n:'日本海ミッション',u:'https://open.spotify.com/playlist/6i8YqbQAvZLOyF6y2cXRCs?utm_source=anthropic&utm_medium=claude&go=1&nap_web=1&request_id=e0a4dc04-9fb3-4faf-bd18-cb082e57bff4'},
+  enmusubi:{n:'縁結びの国',u:'https://open.spotify.com/playlist/2dFtLsahJ7hmPhCWZ97Nkp?utm_source=anthropic&utm_medium=claude&go=1&nap_web=1&request_id=247a7530-759f-4c3c-a943-9dedfa55113d'},
+  home:{n:'帰還',u:'https://open.spotify.com/playlist/6kAzvB2P3LocvkXQhq75Q1?utm_source=anthropic&utm_medium=claude&go=1&nap_web=1&request_id=d4264296-f63f-4d1c-8e99-e48dbc007c07'}
+};
+var START_POS={0:[34.3965,132.4596],1:null,2:null}; // day1 starts from Hiroshima; other days from previous night's stay
+var DAYS=[
+{label:'1日目 12/5 土',chap:'第1章 オロチと鉄の国',col:'var(--c1)',
+ open:'こちらヤマタ司令。コードネーム{CN}、聞こえるか。本日の作戦は「オロチと鉄の国」。奥出雲の山に、8つの頭をもつ大蛇の伝説を追う。まずは雲南の鉄の町へ向かえ。BGMは「任務開始」だ。',
+ talk:['豆知識だ。奥出雲は、昔ながらのたたら製鉄が今も行われている、日本でただひとつの地域だ。','豆知識。スサノオがオロチのしっぽを切ると、中から剣が出てきた。川で砂鉄がとれる鉄の国だったから、という説もある。','VIVANTの監督は、ドラマ「砂の器」を撮ったころから、奥出雲と縁があるそうだ。'],
+ m:[
+  {n:'鉄の歴史博物館・田部家の土蔵',ll:[35.16706,132.84966],r:400,bgm:'start',
+   ap:'目標地点、雲南市吉田町が近い。ここは昔、たたら製鉄でさかえた鉄の町だ。白い土蔵が並んでいたら、そこが目的地だ。',
+   os:'到着だ。この白い土蔵は、鉄づくりでさかえた田部家のもの。博物館では、砂鉄から鉄をつくる「たたら」のしくみが分かるぞ。',
+   viv:'VIVANT シーズン2 第15話：公安のハッカー東条が身をひそめた場所',
+   ms:'博物館で、たたらの炉は何日間火を燃やし続けるのか調べて報告せよ。'},
+  {n:'稲田神社・姫のそば ゆかり庵',ll:[35.16785,133.10671],r:350,bgm:'tatara',
+   ap:'次の目標は稲田神社。オロチに食べられそうになったイナダヒメが、生まれたと伝わる場所だ。昼の補給もここでとれるぞ。',
+   os:'到着。ここはイナダヒメの生まれ故郷と伝わる神社だ。社務所の中では奥出雲そばが食べられる。ヒメが産湯をつかった池と、へその緒を切った竹べらから笹が生えたという笹宮が、近くにかくれている。',
+   ms:'「産湯の池」と「笹宮」の2か所を発見せよ。'},
+  {n:'櫻井家住宅',ll:[35.10849,132.94163],r:350,bgm:'tatara',
+   ap:'次はVIVANTの重要地点、乃木家の実家として撮影された櫻井家住宅だ。冬季休館に入っていないか、念のため確認しておけ。',
+   os:'到着。ここは松江藩の鉄師だった櫻井家の屋敷だ。玄関の土間と、庭に面した客間に注目せよ。',
+   viv:'VIVANT シーズン1：乃木家の実家。公安の野崎が、乃木家の家紋がテントのマークと同じだと気づく場面',
+   ms:'屋敷の中で家紋をさがし、その形を目に焼きつけろ。'},
+  {n:'鬼の舌震',ll:[35.17414,133.01494],r:500,bgm:'tatara',
+   ap:'次は鬼の舌震。大きな岩がごろごろ続く渓谷だ。',
+   os:'到着。むかし、ワニ、今でいうサメが、玉日女という女神に恋をした。そのお話が名前の由来といわれる。冬は足もとが凍ることがある。気をつけて歩け。',
+   viv:'VIVANT シーズン1 第9話：乃木の父・卓が、若いころ川辺で勉強する場面',
+   ms:'いちばん大きいと思う岩を見つけ、その岩に名前をつけよ。'},
+  {n:'亀嵩温泉 玉峰山荘',ll:[35.22413,133.08598],r:500,bgm:'tatara',final:true,
+   ap:'本日の最終地点、亀嵩温泉が近い。',
+   os:'1日目の任務、完了だ。温泉で体を休めておけ。明日は、あの世の入口に向かう。',
+   ms:'しっかり休むこと。'}
+ ]},
+{label:'2日目 12/6 日',chap:'第2章 あの世の入口',col:'var(--c2)',
+ open:'おはよう、コードネーム{CN}。本日の作戦は「あの世の入口」。まずは空から降りてきた鉄の神に会いに行く。',
+ talk:['豆知識だ。黄泉の国から逃げるとき、イザナギは追っ手に桃の実を投げて追いはらったといわれる。','佐太神社の神在祭は、地元では「お忌みさん」と呼ばれている。','宍道湖のシジミは、全国の生産量の約4割をしめる。'],
+ m:[
+  {n:'金屋子神社',ll:[35.24489,133.10967],r:500,bgm:'tatara',
+   ap:'目標は金屋子神社。鉄づくりの神さまの総本社だ。',
+   os:'到着。この神さまは白鷺に乗って空から降り、桂の木にとまって、人に鉄のつくり方を教えたといわれる。境内には神木の桂の巨木がある。',
+   ms:'神さまがとまったという、桂の大木を見つけよ。'},
+  {n:'奥出雲たたらと刀剣館',ll:[35.17532,133.09122],r:350,bgm:'tatara',
+   ap:'次は奥出雲たたらと刀剣館。',
+   os:'到着。入口でヤマタノオロチの大きな像が待っている。昨日のお話を思い出せ。オロチのしっぽから剣が出てきた。ここでは、たたらの鉄から日本刀ができるまでが分かる。',
+   ms:'オロチの像の頭を数えて報告せよ。'},
+  {n:'仁多米食堂',ll:[35.19508,133.01144],r:350,bgm:'tatara',
+   ap:'補給の時間だ。仁多米食堂へ向かえ。',
+   os:'到着。釜戸で炊いた仁多米は、おかわり自由だ。午後の作戦にそなえて、しっかり補給しておけ。',
+   ms:'ごはんをおかわりせよ。'},
+  {n:'黄泉比良坂',ll:[35.42788,133.16298],r:400,bgm:'yomi',
+   ap:'ここからBGMを「黄泉の国」に切りかえよう。次の目標は黄泉比良坂。古事記で、あの世とこの世の境とされる場所だ。',
+   os:'到着。イザナギは、亡くなった妻イザナミを迎えに黄泉の国へ行った。「見ないで」という約束をやぶって逃げ帰り、大きな岩で入口をふさいだ。その坂が、ここだ。亡くなった人への手紙を入れるポストもある。',
+   ms:'入口をふさいだような大岩はいくつある？　数えて報告せよ。'},
+  {n:'佐太神社',ll:[35.50888,133.00395],r:400,bgm:'yomi',
+   ap:'次は佐太神社。',
+   os:'到着。毎年秋、全国の神さまが出雲に集まる。その神在祭の記録が、いちばん古い神社だ。祭りのあいだ、地元の人は歌も散髪もがまんして、神さまのじゃまをしないそうだ。',
+   ms:'本殿の前で、旅の安全を祈れ。'},
+  {n:'松江城 大手門の堀ばた',ll:[35.47498,133.05056],r:450,bgm:'yomi',
+   ap:'次はVIVANT地点、松江城の堀ばただ。',
+   os:'到着。国宝の天守がある松江城だ。となりの県庁前には、VIVANTの横断幕もある。',
+   viv:'VIVANT シーズン1 第3話：乃木が同期の山本と、缶コーヒーを手に話す場面',
+   ms:'缶コーヒーを手に、乃木と山本の場面を再現せよ。'},
+  {n:'郷土料理と地酒の店 川京',ll:[35.46912,133.05542],r:250,bgm:'yomi',final:true,
+   ap:'本日の最終任務は夕食だ。予約した川京へ。',
+   os:'宍道湖でとれる7つの魚介、宍道湖七珍を味わえ。冬はスズキの奉書焼きがうまい。2日目の任務、完了だ。',
+   ms:'宍道湖七珍を全部言えるか挑戦せよ。スズキ、モロゲエビ、ウナギ、アマサギ、シラウオ、コイ、シジミ。'}
+ ]},
+{label:'3日目 12/7 月',chap:'第3章 国ゆずりと黄泉の穴',col:'var(--c3)',
+ open:'最終日だ、コードネーム{CN}。本日の作戦は「国ゆずりと黄泉の穴」。島根半島を西へ進む。BGMは「日本海ミッション」だ。',
+ talk:['豆知識だ。出雲大社の大しめ縄は、2026年の7月に、8年ぶりにかけかえられたばかりだ。','日御碕では、夕日は神聖なものとされてきた。','石見銀山は、2007年に世界遺産になった。'],
+ m:[
+  {n:'一畑薬師',ll:[35.49863,132.87418],r:450,bgm:'sea',
+   ap:'目標は一畑薬師。山の上のお寺だ。',
+   os:'到着。目のお薬師さまとして知られるお寺だ。境内から宍道湖を見下ろせ。',
+   viv:'VIVANT シーズン2 第11話：丸菱商事の社長たちとの料亭会議（本坊書院）',
+   ms:'宍道湖が見える場所を見つけよ。'},
+  {n:'韓竈神社',ll:[35.42234,132.71555],r:750,bgm:'sea',
+   ap:'次は韓竈神社。かなり手ごわい。雨や雪で濡れていたら、無理せず見送れ。',
+   os:'到着。スサノオをまつる神社だ。石段を約300段のぼり、幅45センチの岩のすきまをくぐると、社があらわれる。',
+   ms:'岩のすきまを通りぬけよ。濡れていたら、この任務はとばしてよし。'},
+  {n:'猪目洞窟',ll:[35.44194,132.70833],r:350,bgm:'sea',
+   ap:'次の目標は、猪目洞窟。',
+   os:'到着。出雲国風土記には「夢でこの洞窟に来た人は、かならず死ぬ」と書かれている。黄泉の穴と呼ばれた場所だ。中は落石の危険がある。外から観察せよ。',
+   ms:'中に入らず、外から洞窟を観察せよ。'},
+  {n:'日御碕：灯台・経島・みさき丼',ll:[35.43377,132.62932],r:550,bgm:'sea',
+   ap:'日御碕に向かう。昼の補給は、港の魚をのせたみさき丼だ。',
+   os:'到着。石造りでは日本一高い白い灯台だ。目の前の経島は、昔から人が入ってはいけない神さまの島だ。',
+   viv:'VIVANT シーズン2 第12話：乃木が海を前に「F」と話す、灯台前の岩場',
+   ms:'灯台前の岩場で、海に向かって一言つぶやけ。'},
+  {n:'出雲大社',ll:[35.40401,132.68548],r:650,bgm:'sea',
+   ap:'次は出雲大社。国ゆずりの宮だ。',
+   os:'到着。出雲の国をゆずるかわりに、オオクニヌシが建ててもらった大きな宮が、ここのはじまりといわれる。神楽殿の大しめ縄は、長さ13.5メートル、重さ4.7トンだ。',
+   viv:'VIVANT シーズン1 第9話：乃木の両親、卓と明美が神楽殿で結婚式をあげる場面',
+   ms:'境内にかくれた、うさぎの像をできるだけたくさん見つけよ。'},
+  {n:'石見銀山',ll:[35.10595,132.45175],r:700,bgm:'enmusubi',
+   ap:'BGMを「縁結びの国」に切りかえよう。出雲大社の門前町は、歌手の竹内まりやのふるさとだ。最後の目標、世界遺産・石見銀山。車は世界遺産センターにとめて、バスで大森へ向かえ。',
+   os:'到着。江戸時代に銀をほった坑道、龍源寺間歩の中を、歩いて通りぬけられる。冬は閉まる時間が早まることがある。急げ。',
+   ms:'坑道の中を通りぬけよ。'},
+  {n:'広島',ll:[34.3965,132.4596],r:4000,bgm:'home',final:true,
+   ap:'帰還ルートに入った。BGMを「帰還」に切りかえよう。みんなで歌いながら帰ろう。運転手、休憩をはさみながら安全に戻れ。',
+   os:'作戦完了。コードネーム{CN}、3日間の任務、おつかれさまでした。オロチ、黄泉の国、国ゆずり。すべての神話をたどりきった。また会おう。',
+   ms:'無事に家に帰ること。'}
+ ]}
+];
+
+/* ===================== HELPERS ===================== */
+function $(id){return document.getElementById(id);}
+function hav(a,b){var R=6371000,t=Math.PI/180,dLa=(b[0]-a[0])*t,dLo=(b[1]-a[1])*t,x=Math.sin(dLa/2)*Math.sin(dLa/2)+Math.cos(a[0]*t)*Math.cos(b[0]*t)*Math.sin(dLo/2)*Math.sin(dLo/2);return 2*R*Math.asin(Math.sqrt(x));}
+function load(){try{return JSON.parse(localStorage.getItem('mythops-v1')||'{}')||{};}catch(e){return {};}}
+var demoMode=false;
+function save(){if(demoMode)return;try{localStorage.setItem('mythops-v1',JSON.stringify(ST));}catch(e){}}
+var ST=load(); ST.done=ST.done||{}; ST.idx=ST.idx||{};
+function cn(s){return s.replace(/\{CN\}/g,ST.cn||'チーム');}
+
+/* boss (original guide character: a small white serpent agent) */
+var BOSS='<circle cx="60" cy="62" r="50" fill="#1E2A3D"/>'+
+ '<path d="M28 104 C20 84 36 72 52 78 C70 84 92 80 92 62" stroke="#E9F1EA" stroke-width="16" fill="none" stroke-linecap="round"/>'+
+ '<ellipse cx="66" cy="44" rx="30" ry="24" fill="#E9F1EA"/>'+
+ '<rect x="40" y="34" width="52" height="13" rx="6" fill="#141A24"/><rect x="44" y="36" width="18" height="8" rx="3" fill="#3B4C66"/><rect x="70" y="36" width="18" height="8" rx="3" fill="#3B4C66"/>'+
+ '<path d="M36 40 C30 44 30 54 36 58" stroke="#141A24" stroke-width="3" fill="none"/><circle cx="37" cy="59" r="3.5" fill="#F0B94A"/>'+
+ '<ellipse class="mouth" style="transform-origin:66px 58px" cx="66" cy="58" rx="7" ry="3" fill="#C2452D"/>'+
+ '<path d="M58 22 l4 -8 l4 8 M70 22 l4 -8 l4 8" stroke="#F0B94A" stroke-width="3" fill="none" stroke-linejoin="round"/>';
+$('boss').innerHTML=BOSS; $('bossStart').innerHTML=BOSS;
+
+/* ===================== VOICE ===================== */
+var voiceOn=true, jaVoice=null, lastLine='';
+function pickVoice(){var v=(window.speechSynthesis&&speechSynthesis.getVoices())||[];jaVoice=v.filter(function(x){return /^ja/i.test(x.lang);}).sort(function(a,b){return (b.localService?1:0)-(a.localService?1:0);})[0]||null;}
+if(window.speechSynthesis){pickVoice();speechSynthesis.onvoiceschanged=pickVoice;}
+function say(text,opts){
+  text=cn(text); lastLine=text; $('say').textContent=text;
+  if(!voiceOn||!window.speechSynthesis){return;}
+  if(!(opts&&opts.queue)) speechSynthesis.cancel();
+  var u=new SpeechSynthesisUtterance(text.replace(/VIVANT/g,'ヴィヴァン').replace(/F」/g,'エフ」'));
+  u.lang='ja-JP'; if(jaVoice) u.voice=jaVoice; u.rate=1.02; u.pitch=0.95;
+  u.onstart=function(){$('bossBox').classList.add('talking');};
+  u.onend=u.onerror=function(){if(!speechSynthesis.speaking)$('bossBox').classList.remove('talking');};
+  speechSynthesis.speak(u);
+}
+
+/* ===================== WAKE LOCK ===================== */
+var wake=null;
+function keepAwake(){
+  if(!('wakeLock' in navigator)){$('cWake').textContent='画面ON 非対応';$('cWake').className='chip off';return;}
+  navigator.wakeLock.request('screen').then(function(w){wake=w;$('cWake').textContent='画面ON';$('cWake').className='chip on';w.addEventListener('release',function(){$('cWake').textContent='画面ON 切れ';$('cWake').className='chip off';});}).catch(function(){$('cWake').textContent='画面ON 不可';$('cWake').className='chip off';});
+}
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&running)keepAwake();});
+
+/* ===================== STATE MACHINE ===================== */
+var day=0, idx=0, running=false, demo=false;
+var pos=null, speed=0, slowSince=null, phase='drive', leftSince=null, spokenAp={}, lastBgm=null, talkOn=true, talkTimer=null, talkI=0;
+function D(){return DAYS[day];}
+function M(){return D().m[idx];}
+function key(i){return day+'-'+i;}
+
+function setTarget(i,announce){
+  idx=Math.max(0,Math.min(D().m.length-1,i)); ST.idx[day]=idx; save();
+  phase='drive'; slowSince=null; leftSince=null;
+  $('onsite').hidden=true; $('targetCard').hidden=false;
+  $('tName').textContent=M().n;
+  var b=BGM[M().bgm];
+  $('bgmName').textContent=b.n; $('bgmBtn').href=b.u;
+  if(lastBgm!==M().bgm){ if(lastBgm!==null){$('bgmCard').classList.remove('flash');void $('bgmCard').offsetWidth;$('bgmCard').classList.add('flash');} lastBgm=M().bgm; }
+  renderProgress();
+  if(announce) say('次の任務地は、'+M().n+'。'+(pos?'あと'+fmtDistSpeech(hav(pos,M().ll))+'だ。':''));
+  updateDist();
+}
+function fmtDist(m){return m>=1000?{v:(m/1000).toFixed(m>=10000?0:1),u:'km'}:{v:String(Math.round(m/10)*10),u:'m'};}
+function fmtDistSpeech(m){return m>=1000?(m/1000).toFixed(m>=10000?0:1)+'キロ':Math.round(m/10)*10+'メートル';}
+function updateDist(){
+  if(!pos){$('tDist').innerHTML='--<small>km</small>';return;}
+  var d=hav(pos,M().ll), f=fmtDist(d);
+  $('tDist').innerHTML=f.v+'<small>'+f.u+'</small>';
+  var walking=speed<2.5;
+  var mode=$('tMode');
+  if(d<=M().r){mode.textContent=walking?'到着・停車中':'目的地周辺';mode.className='mode near';}
+  else if(walking&&speed>0.4){mode.textContent='徒歩';mode.className='mode walk';}
+  else {mode.textContent='走行中';mode.className='mode drive';}
+}
+function tick(){
+  if(!pos) return;
+  var m=M(), d=hav(pos,m.ll), now=Date.now();
+  // approach briefing
+  var apR=Math.max(2500,m.r*5);
+  if(phase==='drive' && d<apR && !spokenAp[key(idx)]){ spokenAp[key(idx)]=1; say(m.ap); }
+  // arrival: inside radius and slow for 12s
+  if(phase==='drive' && d<=m.r){
+    if(speed<2.5){ if(!slowSince) slowSince=now; if(now-slowSince>12000) arrive(); }
+    else slowSince=null;
+  } else if(phase==='drive') slowSince=null;
+  // leaving after onsite -> auto complete
+  if(phase==='onsite' && !m.final){
+    if(d>Math.max(700,m.r*2.2) && speed>4){ if(!leftSince) leftSince=now; if(now-leftSince>45000) complete(true); }
+    else leftSince=null;
+  }
+  updateDist();
+}
+function arrive(){
+  phase='onsite'; slowSince=null;
+  var m=M();
+  $('targetCard').hidden=true; $('onsite').hidden=false;
+  $('oName').textContent=m.n; $('oStory').textContent=cn(m.os);
+  $('oViv').hidden=!m.viv; $('oViv').textContent=m.viv||'';
+  $('oMission').innerHTML='<b>任務</b>　'+escapeHtml(m.ms);
+  $('doneBtn').textContent=m.final?'本日の作戦 終了':'任務完了';
+  say(m.os+'　任務。'+m.ms);
+}
+function escapeHtml(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function complete(auto){
+  ST.done[key(idx)]=1; save();
+  var st=$('stamp'); st.hidden=false; setTimeout(function(){st.hidden=true;},1500);
+  if(M().final){ if(!auto) say(day<2?'本日の作戦は終了だ。よくやった。明日も同じアプリで「任務開始」を押せ。':'全作戦、終了。よくやった。'); phase='end'; renderProgress(); return; }
+  var next=idx+1;
+  setTimeout(function(){ say((auto?'任務完了とみなす。':'任務完了。よくやった。')+'次の任務地は、'+D().m[next].n+'だ。'+(BGM[D().m[next].bgm].n!==BGM[M().bgm].n?'BGMを「'+BGM[D().m[next].bgm].n+'」に切りかえよう。':'')); setTarget(next,false); },300);
+}
+function renderProgress(){
+  var ms=D().m, n=0;
+  $('prog').innerHTML=ms.map(function(x,i){var c=ST.done[key(i)]?'done':(i===idx?'cur':'');if(ST.done[key(i)])n++;return '<span class="'+c+'"></span>';}).join('');
+  $('progLbl').textContent='任務 '+n+' / '+ms.length;
+  $('list').innerHTML=ms.map(function(x,i){var c=ST.done[key(i)]?'done':(i===idx?'cur':'');return '<li class="'+c+'"><span class="d"></span><span>'+escapeHtml(x.n)+'</span></li>';}).join('');
+  $('dayLbl').textContent=D().label; $('chapLbl').textContent=D().chap; $('dayLbl').style.color=D().col;
+}
+
+/* ===================== GPS ===================== */
+var watchId=null, lastFix=null;
+function onFix(p){
+  var c=[p.coords.latitude,p.coords.longitude], t=p.timestamp||Date.now();
+  var sp=p.coords.speed;
+  if((sp==null||isNaN(sp)) && lastFix){var dt=(t-lastFix.t)/1000; sp=dt>0?hav(lastFix.c,c)/dt:0;}
+  speed=sp||0; pos=c; lastFix={c:c,t:t};
+  $('cGps').textContent='GPS ±'+Math.round(p.coords.accuracy||0)+'m'; $('cGps').className='chip on';
+  $('geoInfo').textContent='位置情報：精度 約'+Math.round(p.coords.accuracy||0)+'m・速度 '+Math.round(speed*3.6)+'km/h';
+  tick();
+}
+function onGeoErr(e){ $('cGps').textContent='GPS 不可'; $('cGps').className='chip off';
+  if(e.code===1) say('位置情報が許可されていない。設定で、このアプリに位置情報を許可してくれ。それまでは「着いた」ボタンで進めてよい。'); }
+function startGps(){
+  if(!('geolocation' in navigator)){onGeoErr({code:0});return;}
+  watchId=navigator.geolocation.watchPosition(onFix,onGeoErr,{enableHighAccuracy:true,maximumAge:2000,timeout:20000});
+}
+
+/* ===================== DEMO ===================== */
+var demoTimer=null, demoPause=0;
+function startDemo(){
+  pos=(day===0?START_POS[0]:DAYS[day-1].m[DAYS[day-1].m.length-1].ll).slice();
+  $('cMode').hidden=false; $('cGps').textContent='デモ走行'; $('cGps').className='chip on';
+  demoTimer=setInterval(function(){
+    if(phase==='onsite'){ speed=0.8; demoPause+=1; if(demoPause>14){demoPause=0; complete(false);} tick(); return; }
+    if(phase==='end'){ speed=0; return; }
+    var tgt=M().ll, d=hav(pos,tgt);
+    var step=Math.min(d, 900); // ~900 m per second (fast-forward)
+    if(d<M().r*0.5){ speed=0.5; tick(); return; }
+    var f=step/d; pos=[pos[0]+(tgt[0]-pos[0])*f,pos[1]+(tgt[1]-pos[1])*f]; speed=15;
+    $('geoInfo').textContent='デモ走行中（実際の位置は使っていません）';
+    tick();
+  },1000);
+}
+
+/* ===================== TALK ===================== */
+function startTalk(){
+  clearInterval(talkTimer);
+  talkTimer=setInterval(function(){
+    if(!talkOn||phase!=='drive'||!pos) return;
+    if(window.speechSynthesis&&speechSynthesis.speaking) return;
+    if(hav(pos,M().ll)<Math.max(2500,M().r*5)) return;
+    var t=D().talk; say(t[talkI%t.length]); talkI++;
+  }, demo?20000:12*60*1000);
+}
+
+/* ===================== WIRING ===================== */
+var mode='real';
+$('mReal').onclick=function(){mode='real';$('mReal').setAttribute('aria-pressed','true');$('mDemo').setAttribute('aria-pressed','false');$('modeNote').textContent='位置情報で自動的に進みます。スマホをホルダーに付けて使ってください。';};
+$('mDemo').onclick=function(){mode='demo';$('mDemo').setAttribute('aria-pressed','true');$('mReal').setAttribute('aria-pressed','false');$('modeNote').textContent='家で試す用です。車が高速で自動走行し、各地点で止まって案内します。';};
+(function initStart(){
+  $('codename').value=ST.cn||'';
+  var t=new Date(), ds=t.getFullYear()+'-'+(t.getMonth()+1)+'-'+t.getDate();
+  var map={'2026-12-5':0,'2026-12-6':1,'2026-12-7':2};
+  $('daysel').value=String(map[ds]!=null?map[ds]:(ST.day||0));
+})();
+$('go').onclick=function(){
+  demo=(mode==='demo');
+  if(demoMode&&!demo){ demoMode=false; ST=load(); ST.done=ST.done||{}; ST.idx=ST.idx||{}; }
+  ST.cn=$('codename').value.trim(); day=+$('daysel').value; ST.day=day; save();
+  if(demo){ demoMode=true; ST={cn:ST.cn,day:day,done:{},idx:{}}; }
+  phase='drive'; spokenAp={};
+  $('start').hidden=true; $('console').hidden=false;
+  keepAwake();
+  // unlock speech inside the tap
+  if(window.speechSynthesis){var u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u);}
+  running=true; lastBgm=null;
+  var i=ST.idx[day]||0; while(ST.done[key(i)]&&i<D().m.length-1)i++;
+  setTarget(i,false);
+  say(D().open);
+  if(demo){ startDemo(); } else startGps();
+  startTalk();
+};
+$('again').onclick=function(){ if(lastLine) say(lastLine); };
+$('voice').onclick=function(){ voiceOn=!voiceOn; this.setAttribute('aria-pressed',String(voiceOn)); this.querySelector('span').textContent=voiceOn?'声 ON':'声 OFF'; if(!voiceOn&&window.speechSynthesis)speechSynthesis.cancel(); };
+$('here').onclick=function(){ if(phase==='drive') arrive(); };
+$('skip').onclick=function(){ if(phase==='end')return; if(M().final){arrive();return;} var n=idx+1; say('この任務はとばす。次は'+D().m[n].n+'だ。'); setTarget(n,false); };
+$('doneBtn').onclick=function(){ complete(false); };
+$('talkTgl').onclick=function(){ talkOn=!talkOn; this.setAttribute('aria-pressed',String(talkOn)); this.textContent=talkOn?'道中トーク ON':'道中トーク OFF'; };
+$('changeDay').onclick=function(){ clearInterval(demoTimer); clearInterval(talkTimer); if(watchId!=null)navigator.geolocation.clearWatch(watchId); watchId=null; running=false; if(window.speechSynthesis)speechSynthesis.cancel(); $('console').hidden=true; $('start').hidden=false; };
+$('resetDay').onclick=function(){ if(this.dataset.sure){ Object.keys(ST.done).forEach(function(k){ if(k.indexOf(day+'-')===0) delete ST.done[k]; }); spokenAp={}; save(); setTarget(0,true); delete this.dataset.sure; this.textContent='今日の進みぐあいをリセット'; } else { this.dataset.sure='1'; this.textContent='もう一度押すとリセット'; } };
+
+if('serviceWorker' in navigator){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); }
+</script>
+</body>
+</html>

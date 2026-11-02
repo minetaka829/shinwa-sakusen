@@ -1,0 +1,17 @@
+{
+  "name": "作戦名：神話の国",
+  "short_name": "神話作戦",
+  "description": "島根2泊3日の旅を、ヤマタ司令が位置情報と音声で案内する旅のアプリ",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0E1520",
+  "theme_color": "#0E1520",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
