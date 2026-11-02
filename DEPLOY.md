@@ -19,3 +19,8 @@ claude.aiのArtifactでは位置情報が使えないため、GitHub Pagesで公
 - iPhone：SafariでURLを開く → 共有ボタン → 「ホーム画面に追加」
 - Android：Chromeで開く → メニュー → 「ホーム画面に追加」（またはアプリをインストール）
 - 旅行前に「デモ走行」で試す。本番は「本番（GPS）」で「任務開始」。
+
+## ファイルの分担（第3版から）
+- `index.html` 画面と見た目 ／ `app.js` 動き ／ `story.js` 任務地・定型のセリフ・読み方の表 ／ `route.js` 道中の案内（下調べの結果） ／ `plot.js` 物語
+- `voice/` 録音した声と効果音。セリフを直したら VOICEVOX エンジン（`~/voicevox_engine/engine/run`）を起動して `node tools/make-voice.mjs`（変わった文だけ録り直す）
+- 声の種類は `tools/voice.json`。物語の点検結果は `tools/story-review.md`

@@ -1,12 +1,12 @@
 // Offline cache for the app shell (mountain areas may have weak signal).
-const CACHE = 'mythops-v2';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-180.png'];
+const CACHE = 'mythops-v3';
+const SHELL = ['./', './index.html', './story.js', './route.js', './plot.js', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-180.png'];
 
 // The recorded voice is saved up front too, so the commander talks with no signal.
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)
     .then(() => fetch('./voice/index.json')).then((r) => r.json())
-    .then((idx) => c.addAll(['./voice/index.json', './voice/silence.m4a', ...new Set(Object.values(idx))].map((f) => f.startsWith('./') ? f : './voice/' + f))))
+    .then((idx) => c.addAll(['./voice/index.json', './voice/silence.m4a', ...new Set(Object.values(idx).flatMap((g) => Object.values(g)))].map((f) => f.startsWith('./') ? f : './voice/' + f))))
     .then(() => self.skipWaiting()));
 });
 
