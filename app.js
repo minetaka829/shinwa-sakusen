@@ -48,7 +48,7 @@ fetch('voice/index.json').then(function(r){return r.json();}).then(function(j){V
 function saveVoices(){
   if(!('caches' in window)) return;
   var files=[]; Object.keys(VOICE).forEach(function(g){ Object.keys(VOICE[g]).forEach(function(k){ var f=VOICE[g][k]; if(files.indexOf(f)<0) files.push(f); }); });
-  caches.open('mythops-voice').then(function(c){ return c.keys(); }).then(function(ks){
+  caches.open('mythops-voice').then(function(c){ return c.keys().then(function(ks){ ks.forEach(function(r){ if(files.indexOf(r.url.split('/voice/')[1])<0) c.delete(r); }); return ks; }); }).then(function(ks){
     var have={}; ks.forEach(function(r){ have[r.url.split('/voice/')[1]]=1; });
     var todo=files.filter(function(f){return !have[f];}), done=files.length-todo.length;
     function show(){ $('offlineStart').textContent=$('offline').textContent=done>=files.length?'オフライン用の声：保存ずみ（'+files.length+'）':'オフライン用の声：保存中 '+done+' / '+files.length; }
@@ -114,13 +114,12 @@ function say(text,opts){
 }
 function nextItem(){
   var my=++gen, it=queue.shift();
-  if(it==null){ speaking=false; talking(false); setWho('boss'); musicBack(); return; }
+  if(it==null){ speaking=false; talking(false); setWho('boss'); return; }
   speaking=true;
   function after(){ if(my!==gen)return; talking(false); gapTimer=setTimeout(function(){ if(my===gen) nextItem(); },it.sfx?60:280); }
   function silent(){ talking(false); gapTimer=setTimeout(function(){ if(my===gen) nextItem(); },it.sfx?0:Math.max(1800,it.t.length*170)); }
   if(it.pause){ talking(false); gapTimer=setTimeout(function(){ if(my===gen) nextItem(); },voiceOn?it.pause*1000:600); return; }
   if(it.music){ cue(it.music); gapTimer=setTimeout(function(){ if(my===gen) nextItem(); },(it.hold||0)*1000); return; }
-  if(!it.sfx && queue.filter(function(x){return x.t;}).length>=1) musicHush();
   if(!it.sfx){ setWho(it.who); $('say').textContent=it.t; fitSub(); }
   if(!voiceOn) return silent();
   var f=fileOf(it);
@@ -164,12 +163,7 @@ function setTarget(i,announce){
   phase='drive'; slowSince=null; leftSince=null;
   $('onsite').hidden=true; $('doneBtn').hidden=true; $('photoBtn').hidden=true;
   $('tName').textContent=M().n;
-  var b=BGM[M().bgm];
-  $('bgmName').textContent=b.n; $('bgmBtn').href=b.u;
-  if(lastBgm!==M().bgm){
-    if(lastBgm!==null && !spReady()) ['bgmCard','menuBtn'].forEach(function(id){var e=$(id);e.classList.remove('flash');void e.offsetWidth;e.classList.add('flash');});
-    lastBgm=M().bgm;
-  }
+  $('bgmName').textContent=DRIVE_PLAYLIST.n; $('bgmBtn').href='https://open.spotify.com/playlist/'+DRIVE_PLAYLIST.id;
   renderProgress();
   if(announce) say(LINES.next(M().n));
   updateDist();
@@ -241,8 +235,7 @@ function complete(auto){
   if(M().final){ phase='end'; $('doneBtn').hidden=true; $('photoBtn').hidden=true; renderProgress(); recap(extra); return; }
   var next=idx+1;
   setTimeout(function(){
-    var bgmLine=(!spReady()&&BGM[D().m[next].bgm].n!==BGM[M().bgm].n)?LINES.bgm(BGM[D().m[next].bgm].n):'';
-    play([{sfx:'fanfare'}].concat(lines(auto?LINES.autoDone:LINES.done), extra, lines(LINES.next(D().m[next].n)+bgmLine), [{music:'drive'}]));
+    play([{sfx:'fanfare'}].concat(lines(auto?LINES.autoDone:LINES.done), extra, lines(LINES.next(D().m[next].n)), [{music:'drive'}]));
     setTarget(next,false);
   },300);
 }
@@ -272,6 +265,7 @@ function storyItems(kind,i){
     });
     if(e.music) out.push({music:e.music});
   });
+  if(themed && !(out.length && out[out.length-1].music)) out.push({music:'drive'});
   return out;
 }
 function renderProgress(){
@@ -492,38 +486,35 @@ function spAccess(){
   return spToken({grant_type:'refresh_token',refresh_token:t.r,client_id:SPOTIFY_ID}).then(function(n){return n.a;});
 }
 function spApi(path,opt){ return spAccess().then(function(a){ opt=opt||{}; opt.headers={'Authorization':'Bearer '+a,'Content-Type':'application/json'}; return fetch('https://api.spotify.com/v1'+path,opt); }); }
-function spPlay(bgmKey){
-  var id=(BGM[bgmKey].u.match(/playlist\/([A-Za-z0-9]+)/)||[])[1]; if(!id) return;
-  return spApi('/me/player/devices').then(function(r){return r.json();}).then(function(j){
-    var ds=j.devices||[], dv=ds.filter(function(x){return x.is_active;})[0]||ds.filter(function(x){return x.type==='Smartphone';})[0]||ds[0];
-    if(!dv){ say(LINES.spNoDevice,{queue:true}); flashBgm(); return; }
-    return spApi('/me/player/play?device_id='+dv.id,{method:'PUT',body:JSON.stringify({context_uri:'spotify:playlist:'+id})}).then(function(r){
-      if(r.ok||r.status===204){ $('spState').textContent='連携中：「'+BGM[bgmKey].n+'」を再生'; }
-      else { flashBgm(); }
-    });
-  }).catch(function(){ flashBgm(); });
-}
-// scene music: play the chosen track(s) for a moment of the story
-var musicOn=false, hushed=false, backTimer=null, curCue=null;
-function cueUris(name){
-  var ids=[];
-  if(name==='drive') ids=(day===2&&M().final&&MUSIC.home.length)?MUSIC.home:rotate(MUSIC.drive[day]||[]);
-  else if(name==='start') ids=MUSIC.start.concat(rotate(MUSIC.drive[day]||[]));
-  else ids=(MUSIC[name]||[]).concat(name==='approach'?[]:rotate(MUSIC.drive[day]||[]));
-  return ids.map(function(i){return 'spotify:track:'+i;});
-}
-function rotate(a){ if(!a.length) return a; var k=(ST.driveI=(ST.driveI||0)+1)%a.length; save(); return a.slice(k).concat(a.slice(0,k)); }
+// scene music: a mood track for a moment of the story, then back to the drive playlist
+var musicOn=false, cueN=0, backTimer=null;
 function cue(name){
   if(!spReady()) return;
-  var uris=cueUris(name);
-  if(!uris.length){ if(name==='drive'||name==='start') spPlay(M().bgm); return; }
-  if(name==='ending') uris=uris.slice(0,1);
-  hushed=false; musicOn=true; curCue=name;
-  spDevice().then(function(dv){ if(dv) spApi('/me/player/play?device_id='+dv,{method:'PUT',body:JSON.stringify({uris:uris})}); });
+  if(phase==='onsite' && (name==='drive'||name==='enemy'||name==='approach')) return; // out of the car
+  var my=++cueN, home=name==='drive' && day===2 && M().final && MUSIC.home.length;
+  clearTimeout(backTimer); musicOn=true;
+  spDevice().then(function(dv){
+    if(!dv||my!==cueN) return;
+    if(name==='drive' && !home){
+      return spApi('/me/player/shuffle?state=true&device_id='+dv,{method:'PUT'}).catch(function(){}).then(function(){
+        return spApi('/me/player/play?device_id='+dv,{method:'PUT',body:JSON.stringify({context_uri:'spotify:playlist:'+DRIVE_PLAYLIST.id})});
+      }).then(function(){ $('spState').textContent='連携中：「'+DRIVE_PLAYLIST.n+'」を再生'; });
+    }
+    var ids=home?MUSIC.home:(MUSIC[name]||[]);
+    if(!ids.length) return cue('drive');
+    return spApi('/me/player/play?device_id='+dv,{method:'PUT',body:JSON.stringify({uris:ids.map(function(i){return 'spotify:track:'+i;})})}).then(function(){
+      if(home||name==='ending') return; // the way home and the ending play out
+      // when the mood track ends, go back to the drive playlist
+      setTimeout(function(){
+        spApi('/me/player/currently-playing').then(function(r){return r.status===200?r.json():null;}).then(function(j){
+          if(!j||!j.item||my!==cueN) return;
+          backTimer=setTimeout(function(){ if(my===cueN && phase!=='onsite') cue('drive'); },Math.max(1000,j.item.duration_ms-(j.progress_ms||0)-1500));
+        }).catch(function(){});
+      },2500);
+    });
+  });
 }
-function musicHush(){ if(!spReady()||!musicOn||hushed) return; clearTimeout(backTimer); hushed=true; spApi('/me/player/pause',{method:'PUT'}).catch(function(){}); }
-function musicBack(){ if(!hushed) return; clearTimeout(backTimer); backTimer=setTimeout(function(){ if(speaking||!hushed) return; hushed=false; if(curCue==='enemy') cue(phase==='drive'?'drive':'start'); else spApi('/me/player/play',{method:'PUT'}).catch(function(){}); },1200); }
-function musicStop(){ if(!spReady()||!musicOn) return; musicOn=false; hushed=false; spApi('/me/player/pause',{method:'PUT'}).catch(function(){}); }
+function musicStop(){ if(!spReady()||!musicOn) return; musicOn=false; ++cueN; clearTimeout(backTimer); spApi('/me/player/pause',{method:'PUT'}).catch(function(){}); }
 function spDevice(){
   return spApi('/me/player/devices').then(function(r){return r.json();}).then(function(j){
     var ds=j.devices||[], dv=ds.filter(function(x){return x.is_active;})[0]||ds.filter(function(x){return x.type==='Smartphone';})[0]||ds[0];
@@ -535,10 +526,10 @@ function flashBgm(){ ['bgmCard','menuBtn'].forEach(function(id){var e=$(id);e.cl
 function renderSpotify(){
   $('spRow').hidden=!SPOTIFY_ID;
   $('spLogin').hidden=spReady(); $('spPlayNow').hidden=!spReady();
-  $('spState').textContent=spReady()?'Spotify と連携中。BGM が切りかわると自動で流れます。':'連携すると、BGM が自動で切りかわります（Premium が必要）。';
+  $('spState').textContent=spReady()?'Spotify と連携中。ふだんはドライブ用の曲、山場では場面の曲が流れます。':'連携すると、場面に合わせて曲が自動で切りかわります（Premium が必要）。';
 }
 $('spLogin').onclick=spLogin;
-$('spPlayNow').onclick=function(){ spPlay(M().bgm); };
+$('spPlayNow').onclick=function(){ cue('drive'); };
 // back from Spotify's sign-in page
 (function spReturn(){
   var q=new URLSearchParams(location.search), code=q.get('code');

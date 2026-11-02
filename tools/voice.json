@@ -2,12 +2,26 @@
   "boss": {
     "name": "波音リツ クイーン",
     "speaker": 65,
-    "params": { "speedScale": 1.08, "intonationScale": 1.15, "pitchScale": -0.02, "prePhonemeLength": 0.05, "postPhonemeLength": 0.1 }
+    "params": {
+      "speedScale": 1.08,
+      "intonationScale": 1.15,
+      "pitchScale": -0.02,
+      "prePhonemeLength": 0.05,
+      "postPhonemeLength": 0.1
+    },
+    "loud": 2.2
   },
   "enemy": {
     "name": "後鬼 鬼ver.",
     "speaker": 88,
-    "params": { "speedScale": 1.0, "intonationScale": 1.3, "pitchScale": -0.04, "prePhonemeLength": 0.05, "postPhonemeLength": 0.15 },
-    "radio": true
+    "params": {
+      "speedScale": 1.0,
+      "intonationScale": 1.3,
+      "pitchScale": -0.04,
+      "prePhonemeLength": 0.05,
+      "postPhonemeLength": 0.15
+    },
+    "radio": true,
+    "loud": 2.0
   }
 }

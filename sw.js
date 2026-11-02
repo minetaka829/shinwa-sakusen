@@ -1,5 +1,5 @@
 // Offline cache for the app shell (mountain areas may have weak signal).
-const CACHE = 'mythops-v6';
+const CACHE = 'mythops-v7';
 const VOICE_CACHE = 'mythops-voice';
 const SHELL = ['./', './index.html', './story.js', './route.js', './plot.js', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-180.png'];
 

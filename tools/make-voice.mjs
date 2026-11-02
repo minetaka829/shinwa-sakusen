@@ -65,6 +65,14 @@ function radio(s) {
   return out;
 }
 
+// 大きく聞こえるように: ピークをそろえてから、やわらかく圧縮して小さい音を持ち上げる（loud の数字が強さ）
+function loud(s, k) {
+  let peak = 0;
+  for (const x of s) peak = Math.max(peak, Math.abs(x));
+  const g = peak > 0 ? 1 / peak : 1, n = Math.tanh(k);
+  return s.map((x) => Math.tanh(x * g * k) / n * 0.97);
+}
+
 // --- 効果音（その場で合成） ---
 const T = (sec) => Math.round(sec * RATE);
 function sfx(name) {
@@ -99,6 +107,7 @@ async function synth(text, v) {
   if (!r.ok) throw new Error(`synthesis failed: ${r.status} ${text}`);
   let s = readWav(Buffer.from(await r.arrayBuffer()));
   if (v.radio) s = radio(s);
+  if (v.loud) s = loud(s, v.loud);
   return s;
 }
 
