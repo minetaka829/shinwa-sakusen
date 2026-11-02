@@ -498,11 +498,13 @@ function cue(name){
     if(name==='drive' && !home){
       return spApi('/me/player/shuffle?state=true&device_id='+dv,{method:'PUT'}).catch(function(){}).then(function(){
         return spApi('/me/player/play?device_id='+dv,{method:'PUT',body:JSON.stringify({context_uri:'spotify:playlist:'+DRIVE_PLAYLIST.id})});
-      }).then(function(){ $('spState').textContent='連携中：「'+DRIVE_PLAYLIST.n+'」を再生'; });
+      }).then(function(r){ return spCheck(r,'「'+DRIVE_PLAYLIST.n+'」'); }).then(function(ok){ if(ok===true){ var prev=$('spState').textContent; spNote((/流せません/.test(prev)?prev+'　かわりに':'連携中：')+'「'+DRIVE_PLAYLIST.n+'」を再生'); } });
     }
     var ids=home?MUSIC.home:(MUSIC[name]||[]);
     if(!ids.length) return cue('drive');
-    return spApi('/me/player/play?device_id='+dv,{method:'PUT',body:JSON.stringify({uris:ids.map(function(i){return 'spotify:track:'+i;})})}).then(function(){
+    return spApi('/me/player/play?device_id='+dv,{method:'PUT',body:JSON.stringify({uris:ids.map(function(i){return 'spotify:track:'+i;})})}).then(function(r){ return spCheck(r,'場面の曲'); }).then(function(ok){
+      if(ok!==true){ if(name!=='drive') cue('drive'); return; }
+      spNote('連携中：場面の曲を再生');
       if(home||name==='ending') return; // the way home and the ending play out
       // when the mood track ends, go back to the drive playlist
       setTimeout(function(){
@@ -515,18 +517,27 @@ function cue(name){
   });
 }
 function musicStop(){ if(!spReady()||!musicOn) return; musicOn=false; ++cueN; clearTimeout(backTimer); spApi('/me/player/pause',{method:'PUT'}).catch(function(){}); }
+// the phone's Spotify app, made the active player (a command to an idle device fails)
 function spDevice(){
   return spApi('/me/player/devices').then(function(r){return r.json();}).then(function(j){
     var ds=j.devices||[], dv=ds.filter(function(x){return x.is_active;})[0]||ds.filter(function(x){return x.type==='Smartphone';})[0]||ds[0];
-    if(!dv){ say(LINES.spNoDevice,{queue:true}); flashBgm(); return null; }
-    return dv.id;
-  }).catch(function(){ flashBgm(); return null; });
+    if(!dv){ spNote('Spotify のアプリが見つかりません。一度 Spotify を開いてください。'); say(LINES.spNoDevice,{queue:true}); flashBgm(); return null; }
+    if(dv.is_active) return dv.id;
+    return spApi('/me/player',{method:'PUT',body:JSON.stringify({device_ids:[dv.id],play:false})}).then(function(){ return dv.id; });
+  }).catch(function(){ spNote('Spotify につながりません。'); return null; });
 }
+// a failed command is shown in the menu instead of passing silently
+function spCheck(r,what){
+  if(r.ok||r.status===204) return true;
+  return r.json().catch(function(){return {};}).then(function(j){ spNote(what+'を流せませんでした（'+r.status+(j.error&&j.error.message?'：'+j.error.message:'')+'）'); flashBgm(); return false; });
+}
+function spNote(t){ $('spState').textContent=t; }
 function flashBgm(){ ['bgmCard','menuBtn'].forEach(function(id){var e=$(id);e.classList.remove('flash');void e.offsetWidth;e.classList.add('flash');}); }
 function renderSpotify(){
   $('spRow').hidden=!SPOTIFY_ID;
   $('spLogin').hidden=spReady(); $('spPlayNow').hidden=!spReady();
-  $('spState').textContent=spReady()?'Spotify と連携中。ふだんはドライブ用の曲、山場では場面の曲が流れます。':'連携すると、場面に合わせて曲が自動で切りかわります（Premium が必要）。';
+  if(!spReady()) spNote('連携すると、場面に合わせて曲が自動で切りかわります（Premium が必要）。');
+  else if(!$('spState').textContent||/連携すると/.test($('spState').textContent)) spNote('Spotify と連携中。ふだんは「'+DRIVE_PLAYLIST.n+'」、山場では場面の曲が流れます。');
 }
 $('spLogin').onclick=spLogin;
 $('spPlayNow').onclick=function(){ cue('drive'); };
@@ -579,7 +590,7 @@ $('go').onclick=function(){
   var h=new Date().getHours();
   say(D().open,{sfx:'radio'});
   if(h<10) say(TIME.morning,{queue:true});
-  play([{music:'start'}],{queue:true,noRepeat:true});
+  cue('start');
   if(demo){ startDemo(); } else startGps();
   startTalk(); startClock();
 };

@@ -114,7 +114,7 @@ var DAYS=[
 // Spotify 連携のアプリID（developer.spotify.com で作る。空なら連携ボタンを出さない）
 var SPOTIFY_ID='5c8276d0ddd6493d9871b2a417f77616';
 // ふだん流すドライブ用のプレイリスト（Spotify。シャッフルで流す）
-var DRIVE_PLAYLIST={id:'6Mnu8hXfb7f1HRhcSOyalm', n:'島根ドライブ定番J-POP'};
+var DRIVE_PLAYLIST={id:'2KaGuExRCjaxlHntwbHDAO', n:'箱根ドライブ'};
 // 雰囲気を出す場面だけ流す曲（曲ID）。終わったらドライブ用のプレイリストにもどる。home は最終日の帰り道。
 var MUSIC={
   start:['2mQWWS1vVcskzusfFYc48X'],            // VIVANT <Main theme>
