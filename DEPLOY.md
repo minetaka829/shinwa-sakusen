@@ -27,3 +27,7 @@ claude.aiのArtifactでは位置情報が使えないため、GitHub Pagesで公
 - `film/` 作戦映像（`tools/film/render-all.mjs` で書き出し、`node tools/film/index.mjs` で一覧を作る）
 - `voice/` 録音した声と効果音。セリフを直したら VOICEVOX エンジン（`~/voicevox_engine/engine/run`）を起動して `node tools/make-voice.mjs`（変わった文だけ録り直す）。続けて `node tools/voice-env.mjs`（司令の口の動き用に、声の大きさを記録する）
 - 声の種類は `tools/voice.json`。物語の点検結果は `tools/story-review.md`
+
+## プロローグとのつながり（出発前に済ませてしまうので、本編側で約束を消さない）
+- `prologue/` は出発前に2人が開く。誓いの言葉や「数えろ」「白いもの」「無線」などを本編より先に予告している。
+- 本編のセリフ・画面を直したら `node tools/prologue-check.mjs` を流し、全部 OK を確かめてから公開する。
