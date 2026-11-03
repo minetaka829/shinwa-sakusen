@@ -10,6 +10,8 @@ function step(id){ ['stName','stPhoto','stOath','stCard','stDate','home'].forEac
 
 /* ===================== 司令の声 ===================== */
 // 声は本編と同じ録音（../voice）。口の動きは声の大きさの記録（../voice/env.json）
+// マナーモードでも鳴らす（iPhone の Safari 16.4 以降）。本編は音楽と重ねるため ambient のまま
+try{ if(navigator.audioSession) navigator.audioSession.type='playback'; }catch(e){}
 var VOICE={}, ENV={}, player=new Audio(), cur=null, playStart=0, speaking=false, gen=0;
 var voiceReady=fetch('../voice/index.json').then(function(r){ return r.json(); }).then(function(j){ VOICE=j.boss||{}; }).catch(function(){});
 fetch('../voice/env.json').then(function(r){ return r.json(); }).then(function(j){ ENV=j; }).catch(function(){});
