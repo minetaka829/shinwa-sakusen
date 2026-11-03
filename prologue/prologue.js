@@ -11,7 +11,7 @@ function step(id){ ['stName','stPhoto','stOath','stCard','stDate','home'].forEac
 /* ===================== 司令の声 ===================== */
 // 声は本編と同じ録音（../voice）。口の動きは声の大きさの記録（../voice/env.json）
 var VOICE={}, ENV={}, player=new Audio(), cur=null, playStart=0, speaking=false, gen=0;
-fetch('../voice/index.json').then(function(r){ return r.json(); }).then(function(j){ VOICE=j.boss||{}; }).catch(function(){});
+var voiceReady=fetch('../voice/index.json').then(function(r){ return r.json(); }).then(function(j){ VOICE=j.boss||{}; }).catch(function(){});
 fetch('../voice/env.json').then(function(r){ return r.json(); }).then(function(j){ ENV=j; }).catch(function(){});
 player.addEventListener('playing',function(){ playStart=performance.now(); });
 function bossMouth(){
@@ -19,18 +19,33 @@ function bossMouth(){
   var e=ENV[cur], pt=player.currentTime>0.05?player.currentTime:(performance.now()-playStart)/1000, k=Math.floor(pt*25);
   return e&&k<e.length?(+e[k])/9:0;
 }
-// 1文を話す。字幕は el に出す（省略すると司令の吹き出し）。話し終わったら次へ
-function say(t,el){
-  var my=++gen; (el||$('say')).textContent=t;
+// 先に読みこんだ声（ファイル名 → blob の URL）。幕開けは映像と時刻を合わせるので、流す前にまとめて読む
+var PRE={};
+function preload(texts){ return voiceReady.then(function(){ return preload1(texts); }); }
+function preload1(texts){
+  var fs=[]; texts.forEach(function(t){ sentences(t).forEach(function(x){ var f=VOICE[x]; if(f&&!PRE[f]&&fs.indexOf(f)<0) fs.push(f); }); });
+  return Promise.all(fs.map(function(f){ return fetch('../voice/'+f).then(function(r){ return r.blob(); }).then(function(b){ PRE[f]=URL.createObjectURL(b); }).catch(function(){}); }));
+}
+// 声は1文（。まで）ごとに録音してある（本編と同じ区切り方）
+function sentences(t){ return (String(t||'').match(/[^。！？]+[。！？]*」?/g)||[]).map(function(x){ return x.trim(); }).filter(Boolean); }
+// 1文だけ話す。字幕はその1文に切りかえ、声が終わったら次へ
+function say1(t,el,my){
+  el.textContent=t;
   return new Promise(function(ok){
     var f=VOICE[t], done=false;
     function fin(){ if(done) return; done=true; speaking=false; ok(my===gen); }
-    if(!f){ setTimeout(fin,1200+t.length*140); return; }
-    cur=f; speaking=true; player.src='../voice/'+f;
+    if(!f){ setTimeout(fin,900+t.length*160); return; }
+    cur=f; speaking=true; player.src=PRE[f]||('../voice/'+f);
     player.onended=fin; player.onerror=fin;
-    setTimeout(fin,4000+t.length*350); // 止まったときの保険
+    player.onloadedmetadata=function(){ if(isFinite(player.duration)) setTimeout(fin,player.duration*1000+2500); };
+    setTimeout(fin,6000+t.length*300); // 止まったときの保険
     player.play().catch(fin);
   });
+}
+// セリフを話す（1文ずつ）。字幕は el に出す（省略すると司令の吹き出し）
+function say(t,el){
+  var my=++gen; el=el||$('say');
+  return sentences(t).reduce(function(p,x,i){ return p.then(function(go){ if(!go) return false; return (i?new Promise(function(ok){ setTimeout(function(){ ok(my===gen); },180); }):Promise.resolve(true)).then(function(g){ return g&&say1(x,el,my); }); }); },Promise.resolve(true));
 }
 function sayAll(list,el){ return list.reduce(function(p,t){ return p.then(function(go){ return go===false?false:say(t,el).then(function(g){ return g&&new Promise(function(ok){ setTimeout(function(){ ok(true); },450); }); }); }); },Promise.resolve(true)); }
 function hush(){ gen++; speaking=false; player.pause(); }
@@ -39,15 +54,19 @@ function hush(){ gen++; speaking=false; player.pause(); }
 var filmUrl=null;
 function playFilm(after){
   show('film'); $('filmCap').textContent='';
-  var v=$('filmV'), filmDone=false, talkDone=false;
+  var v=$('filmV'), filmDone=false, talkDone=false, skipped=false;
   function next(){ if(filmDone&&talkDone){ hush(); after(); } }
   v.onended=function(){ filmDone=true; next(); };
-  $('skipFilm').onclick=function(){ v.pause(); hush(); filmDone=talkDone=true; next(); };
-  (filmUrl?Promise.resolve(filmUrl):fetch('../film/prologue.mp4').then(function(r){ return r.blob(); }).then(function(b){ return filmUrl=URL.createObjectURL(b); }))
-    .then(function(u){ v.src=u; v.currentTime=0; return v.play(); })
+  $('skipFilm').onclick=function(){ skipped=true; v.pause(); hush(); filmDone=talkDone=true; next(); };
+  $('filmCap').textContent='受信中…';
+  Promise.all([filmUrl?Promise.resolve(filmUrl):fetch('../film/prologue.mp4').then(function(r){ return r.blob(); }).then(function(b){ return filmUrl=URL.createObjectURL(b); }), preload(PROLOGUE.open)])
+    .then(function(r){ $('filmCap').textContent=''; v.src=r[0]; v.currentTime=0; return v.play(); })
     .catch(function(){ filmDone=true; next(); });
-  // 声は映像より少し遅れて始める。最後の「任命式を始める」は司令の画面で
-  setTimeout(function(){ sayAll(PROLOGUE.open.slice(0,-1),$('filmCap')).then(function(){ talkDone=true; next(); }); },1800);
+  // 各セリフは、映像の決まった秒になってから始める（読み込みが遅れても映像とずれない）。最後の「任命式を始める」は司令の画面で
+  var lines=PROLOGUE.open.slice(0,-1);
+  function at(sec){ return new Promise(function(ok){ (function w(){ if(skipped||filmDone||v.currentTime>=sec) ok(); else setTimeout(w,100); })(); }); }
+  lines.reduce(function(p,t,i){ return p.then(function(go){ if(go===false||skipped) return false; return at(PROLOGUE.openCue[i]||0).then(function(){ return skipped?false:say(t,$('filmCap')); }); }); },Promise.resolve(true))
+    .then(function(){ if(skipped) return; talkDone=true; next(); });
 }
 
 /* ===================== 任命式 ===================== */

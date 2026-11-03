@@ -303,19 +303,31 @@ async function prologueFilm() {
   var all = []; ROUTES.forEach(function (dd) { dd.forEach(function (l) { all = all.concat(l.path); }); });
   map.getSource('done').setData(line(all.filter(function (_, k) { return k % 3 === 0; }).map(function (p) { return [p[1], p[0]]; })));
   map.setPaintProperty('done', 'line-opacity', 0.35);
-  // 飛ぶ順の目印（地名は出さない）: 奥出雲 → 黄泉比良坂 → 松江 → 出雲大社 → 日御碕 → 石見銀山
-  var tour = [[35.17, 133.06], [35.30, 133.10], [35.43, 133.16], [35.47, 133.05], [35.42, 132.85], [35.40, 132.69], [35.43, 132.63], [35.25, 132.55], [35.11, 132.45]];
-  var tr = track(tour), T = 46, A = 6, B = 13, C = 36;
-  var japan = { center: [137.5, 36.8], zoom: 4.3, pitch: 0, bearing: 0 }, shimane = { center: [132.85, 35.28], zoom: 8.8, pitch: 45, bearing: 0 };
+  // 語り（prologue/script.js の openCue）に合わせて飛ぶ。地名は出さない
+  //  実際に流して測った時刻: 24.2秒「オロチの棲んだ川」26.5秒「鉄を生む炎」→ 奥出雲、28.8秒「境の坂」→ 黄泉比良坂、
+  //  31.7秒「神々の集う宮」→ 出雲大社。語りは約50秒で終わる
+  var K = [
+    { t: 13.0, ll: [35.28, 132.85], z: 8.8, p: 45, b: -10 },
+    { t: 23.6, ll: [35.19, 133.05], z: 11.8, p: 62, b: 20 },
+    { t: 27.6, ll: [35.17, 133.09], z: 12.1, p: 64, b: 50 },
+    { t: 29.6, ll: [35.428, 133.163], z: 12.6, p: 66, b: -15 },
+    { t: 32.2, ll: [35.404, 132.686], z: 12.6, p: 64, b: -60 },
+    { t: 39.0, ll: [35.433, 132.632], z: 12.2, p: 62, b: -115 },
+    { t: 45.0, ll: [35.30, 132.85], z: 9.0, p: 30, b: 15 }
+  ];
+  var T = 54, A = 6, B = 13, C = 44;
+  var japan = { center: [137.5, 36.8], zoom: 4.3, pitch: 0, bearing: 0 }, shimane = { center: [132.85, 35.28], zoom: 8.8, pitch: 45, bearing: -10 };
+  function keyCam(t) {
+    for (var k = 0; k < K.length - 1; k++) if (t <= K[k + 1].t) break;
+    var a = K[k], b = K[Math.min(k + 1, K.length - 1)], e = ease((t - a.t) / Math.max(0.01, b.t - a.t));
+    var km = hav(a.ll, b.ll) / 1000, hop = Math.min(2.4, km / 14) * Math.sin(Math.PI * e); // 遠くへ移るときは、いったん高く上がる
+    return { center: [lerp(a.ll[1], b.ll[1], e), lerp(a.ll[0], b.ll[0], e)], zoom: lerp(a.z, b.z, e) - hop, pitch: lerp(a.p, b.p, e) - hop * 8, bearing: lerpAng(a.b, b.b, e) };
+  }
   await record('prologue', T, async function (t) {
     var cam;
     if (t < A) cam = Object.assign({}, japan, { zoom: 4.3 + t * 0.05 });
     else if (t < B) { var w = ease((t - A) / (B - A)); cam = { center: [lerp(japan.center[0], shimane.center[0], w), lerp(japan.center[1], shimane.center[1], w)], zoom: lerp(4.6, shimane.zoom, w * w), pitch: lerp(0, 45, w), bearing: lerp(0, -10, w) }; }
-    else if (t < C) {
-      var u = ease((t - B) / (C - B)), sp = tr.L * u, p = tr.at(sp), F = { center: [p[1], p[0]], zoom: 11.6, pitch: 66, bearing: tr.heading(sp, 9000) };
-      var into = Object.assign({}, shimane, { bearing: -10 });
-      cam = t < B + 2.5 ? mix(into, F, ease((t - B) / 2.5)) : F;
-    } else { var e = ease((t - C) / 6); var p2 = tr.at(tr.L); cam = mix({ center: [p2[1], p2[0]], zoom: 11.6, pitch: 66, bearing: tr.heading(tr.L - 1, 9000) }, { center: [132.85, 35.3], zoom: 9.0, pitch: 30, bearing: 15 }, e); }
+    else cam = keyCam(Math.min(t, K[K.length - 1].t));
     map.jumpTo(cam); await idle();
     g.drawImage(map.getCanvas(), 0, 0, W, H); frameDeco(t);
     if (t < A) { txt(typed('TOP SECRET', t - 0.5, 10), W / 2, 120, 26, RED, { mono: true, align: 'center', w: 700 }); if (t > 2.2) txt('別班　作戦記録', W / 2, 160, 16, '#fff', { align: 'center' }); }
