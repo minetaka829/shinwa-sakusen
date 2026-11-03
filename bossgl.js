@@ -134,7 +134,7 @@ var BossGL=(function(){
   }
   var BIND=null, HB=null;
   function shader(type,src){ var s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s); return s; }
-  function init(canvas,overlay){
+  function init(canvas,overlay,src){
     cv=canvas; fx=overlay; g2=fx.getContext('2d');
     gl=cv.getContext('webgl',{alpha:true,premultipliedAlpha:true,antialias:true,preserveDrawingBuffer:true});
     if(!gl) return false;
@@ -162,7 +162,7 @@ var BossGL=(function(){
         EYES.forEach(function(e,i){ var d=x.getImageData(e[0]-e[2]-3,e[1],1,1).data; skinAt[i]='rgb('+d[0]+','+d[1]+','+d[2]+')'; }); }catch(e){}
       ok=true; requestAnimationFrame(frame);
     };
-    img.src='boss.png';
+    img.src=src||'boss.png';
     return true;
   }
   function size(){

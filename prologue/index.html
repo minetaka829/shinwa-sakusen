@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0E1520">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="神話の国 前夜">
+<title>作戦名：神話の国 前夜</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="../icon-180.png">
+<link rel="icon" href="../icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<style>
+/* 出発前に開くプロローグ。本編と同じ「作戦室」の見た目 */
+:root{--bg:#0E1520;--panel:#172131;--panel2:#1E2A3D;--line:#2B3A52;--fg:#F1F3F6;--sub:#A9B4C4;--gold:#F0B94A;--goldFg:#1A1408;--red:#E5634B;
+  --disp:'Dela Gothic One','Zen Maru Gothic',sans-serif;--body:'Zen Maru Gothic','Hiragino Maru Gothic ProN','Hiragino Sans',system-ui,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:var(--body);font-weight:500;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+button,a.btn{font-family:var(--body);font-weight:900;font-size:16px;min-height:52px;border-radius:14px;border:1.5px solid var(--line);background:var(--panel2);color:var(--fg);padding:0 16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+button.primary,a.primary{background:var(--gold);border-color:var(--gold);color:var(--goldFg)}
+.scr{position:fixed;inset:0;display:flex;flex-direction:column;padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));gap:12px;overflow:hidden}
+.eyebrow{font-size:12px;font-weight:900;letter-spacing:.16em;color:var(--gold)}
+/* 受信画面 */
+#gate{justify-content:center;align-items:center;text-align:center;gap:22px;background:#05080D}
+#gate .sig{font-family:ui-monospace,Menlo,monospace;color:var(--red);letter-spacing:.2em;font-size:15px;animation:blink 1.2s steps(2) infinite}
+@keyframes blink{50%{opacity:.25}}
+#gate h1{font-family:var(--disp);font-weight:400;font-size:clamp(30px,9vw,46px);margin:0;line-height:1.2}
+#gate p{color:var(--sub);font-size:14px;line-height:1.7;margin:0}
+/* 幕開け */
+#film{padding:0;background:#000;justify-content:center}
+#film video{width:100%;height:100%;object-fit:cover}
+#film .cap{position:absolute;left:16px;right:16px;bottom:calc(28px + env(safe-area-inset-bottom,0px));text-align:center;font-size:clamp(17px,4.6vw,21px);font-weight:900;line-height:1.6;text-shadow:0 2px 10px #000,0 0 3px #000}
+#film .skip{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:16px;min-height:40px;font-size:13px;background:rgba(0,0,0,.45)}
+/* 司令のいる画面（任命式・待機） */
+.stage{flex:1;min-height:0;position:relative;border-radius:20px;background:radial-gradient(120% 60% at 50% 38%,#1B2A40 0%,var(--bg) 70%);overflow:hidden}
+.bossWrap{position:relative;width:100%;height:100%;display:grid;place-items:center;will-change:transform}
+.bossWrap canvas{grid-area:1/1;position:relative}
+.bossWrap canvas+canvas{z-index:1}
+.sub{background:var(--fg);color:#141A24;border-radius:18px;padding:12px 16px;min-height:76px;font-size:clamp(16px,4.4vw,19px);line-height:1.6;font-weight:900;position:relative;z-index:2}
+.sub .who{display:block;font-size:12px;color:#6A7488;letter-spacing:.1em;margin-bottom:2px}
+.panel{display:flex;flex-direction:column;gap:10px;position:relative;z-index:2}
+.panel input[type=text],.panel input[type=date]{font-family:var(--body);font-size:18px;font-weight:700;min-height:54px;border-radius:12px;border:1.5px solid var(--line);background:var(--panel2);color:var(--fg);padding:0 14px;width:100%}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.oath{background:var(--panel);border:1.5px dashed var(--gold);border-radius:14px;padding:12px 14px;font-size:17px;line-height:1.7;font-weight:900}
+.finger{align-self:center;width:96px;height:96px;border-radius:50%;border:2px solid var(--gold);background:var(--panel2);display:grid;place-items:center;position:relative;touch-action:none;user-select:none;-webkit-user-select:none}
+.finger svg{width:58px;height:58px;color:var(--gold)}
+.finger .ring{position:absolute;inset:-6px;border-radius:50%;background:conic-gradient(var(--gold) calc(var(--p,0)*1%),transparent 0);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px))}
+.card img{width:100%;border-radius:14px;box-shadow:0 10px 30px #000a}
+/* 待機（毎日の指令） */
+.count{display:flex;align-items:baseline;gap:8px;justify-content:center}
+.count b{font-family:var(--disp);font-weight:400;font-size:44px;color:var(--gold);line-height:1}
+.count span{font-size:14px;color:var(--sub);font-weight:900}
+.order{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.order .t{font-size:16px;line-height:1.7;font-weight:700}
+.past summary{color:var(--sub);font-weight:900;min-height:40px;display:flex;align-items:center;cursor:pointer}
+.past ol{margin:0;padding-left:1.4em;color:var(--sub);font-size:14px;line-height:1.7;display:flex;flex-direction:column;gap:6px}
+.links{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.links button,.links a{min-height:46px;font-size:14px}
+#room:has(#home:not([hidden])) .sub{display:none} /* 待機中の指令は下の欄に出す */
+#home .scroll{overflow:auto;display:flex;flex-direction:column;gap:12px;max-height:46dvh}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<!-- 受信（音を出すため、最初に一度押してもらう） -->
+<section class="scr" id="gate">
+  <span class="sig">●  INCOMING TRANSMISSION</span>
+  <h1>極秘通信を<br>受信しています</h1>
+  <p>音が出ます。マナーモードを切って、音量を上げてください。</p>
+  <button class="primary" id="recv" style="min-width:220px;min-height:60px;font-size:19px">受信する</button>
+  <p id="gateNote"></p>
+</section>
+<!-- 幕開け -->
+<section class="scr" id="film" hidden>
+  <video id="filmV" playsinline muted></video>
+  <div class="cap" id="filmCap"></div>
+  <button class="skip" id="skipFilm">とばす</button>
+</section>
+<!-- 司令の画面（任命式と、出発までの待機） -->
+<section class="scr" id="room" hidden>
+  <div class="stage"><div class="bossWrap"><canvas id="cv"></canvas><canvas id="fx"></canvas></div></div>
+  <div class="sub"><span class="who">ヤマタ司令</span><span id="say"></span></div>
+  <!-- 任命式 -->
+  <div class="panel" id="stName" hidden>
+    <input type="text" id="nameIn" maxlength="16" placeholder="名前（身分証にのる）" autocomplete="off">
+    <button class="primary" id="nameOk">次へ</button>
+  </div>
+  <div class="panel" id="stPhoto" hidden>
+    <div class="row"><button class="primary" id="photoBtn">写真を撮る</button><button id="photoSkip">撮らない</button></div>
+    <input type="file" accept="image/*" capture="user" id="photoIn" hidden>
+  </div>
+  <div class="panel" id="stOath" hidden>
+    <div class="oath" id="oathText"></div>
+    <div class="finger" id="finger"><div class="ring" id="ring"></div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 11c0 3-1 6-3 8"/><path d="M8.5 9.5A3.5 3.5 0 0 1 15.5 10c0 4-1 7-2.5 9"/><path d="M6 12a6 6 0 0 1 12-2c0 4-.6 7.5-2 10"/><path d="M4 9a8.5 8.5 0 0 1 16 0"/><path d="M12 11v1.5"/></svg></div>
+  </div>
+  <div class="panel card" id="stCard" hidden>
+    <img id="cardImg" alt="別班の身分証">
+    <div class="row"><button id="cardSave">保存・共有</button><button class="primary" id="cardOk">次へ</button></div>
+  </div>
+  <div class="panel" id="stDate" hidden>
+    <input type="date" id="dateIn">
+    <div class="row"><button class="primary" id="dateOk">決定</button><button id="dateLater">まだ決まっていない</button></div>
+  </div>
+  <!-- 待機: 出発まで毎日の指令 -->
+  <div class="panel" id="home" hidden>
+    <div class="count" id="count"></div>
+    <div class="scroll">
+      <div class="order"><span class="eyebrow" id="orderLbl">本日の指令</span><span class="t" id="orderT"></span><button id="orderPlay">もう一度聞く</button></div>
+      <details class="past" id="past"><summary>これまでの指令</summary><ol id="pastList"></ol></details>
+      <div class="links">
+        <button id="againFilm">幕開けをもう一度</button><button id="showCard">身分証を見る</button>
+        <button id="changeDate">出発日を変える</button><a class="btn" href="../">作戦アプリへ</a>
+      </div>
+    </div>
+  </div>
+</section>
+<script src="script.js"></script>
+<script src="../bossgl.js"></script>
+<script src="prologue.js"></script>
+</body>
+</html>

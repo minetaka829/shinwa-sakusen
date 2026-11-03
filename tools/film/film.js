@@ -297,6 +297,38 @@ async function endingFilm() {
   });
 }
 
+/* ---------- プロローグの幕開け: 日本全体から島根へ降り、3日間の土地の上を飛んで、作戦名 ---------- */
+async function prologueFilm() {
+  var ROUTES = await (await fetch('../sim-routes.json')).json();
+  var all = []; ROUTES.forEach(function (dd) { dd.forEach(function (l) { all = all.concat(l.path); }); });
+  map.getSource('done').setData(line(all.filter(function (_, k) { return k % 3 === 0; }).map(function (p) { return [p[1], p[0]]; })));
+  map.setPaintProperty('done', 'line-opacity', 0.35);
+  // 飛ぶ順の目印（地名は出さない）: 奥出雲 → 黄泉比良坂 → 松江 → 出雲大社 → 日御碕 → 石見銀山
+  var tour = [[35.17, 133.06], [35.30, 133.10], [35.43, 133.16], [35.47, 133.05], [35.42, 132.85], [35.40, 132.69], [35.43, 132.63], [35.25, 132.55], [35.11, 132.45]];
+  var tr = track(tour), T = 46, A = 6, B = 13, C = 36;
+  var japan = { center: [137.5, 36.8], zoom: 4.3, pitch: 0, bearing: 0 }, shimane = { center: [132.85, 35.28], zoom: 8.8, pitch: 45, bearing: 0 };
+  await record('prologue', T, async function (t) {
+    var cam;
+    if (t < A) cam = Object.assign({}, japan, { zoom: 4.3 + t * 0.05 });
+    else if (t < B) { var w = ease((t - A) / (B - A)); cam = { center: [lerp(japan.center[0], shimane.center[0], w), lerp(japan.center[1], shimane.center[1], w)], zoom: lerp(4.6, shimane.zoom, w * w), pitch: lerp(0, 45, w), bearing: lerp(0, -10, w) }; }
+    else if (t < C) {
+      var u = ease((t - B) / (C - B)), sp = tr.L * u, p = tr.at(sp), F = { center: [p[1], p[0]], zoom: 11.6, pitch: 66, bearing: tr.heading(sp, 9000) };
+      var into = Object.assign({}, shimane, { bearing: -10 });
+      cam = t < B + 2.5 ? mix(into, F, ease((t - B) / 2.5)) : F;
+    } else { var e = ease((t - C) / 6); var p2 = tr.at(tr.L); cam = mix({ center: [p2[1], p2[0]], zoom: 11.6, pitch: 66, bearing: tr.heading(tr.L - 1, 9000) }, { center: [132.85, 35.3], zoom: 9.0, pitch: 30, bearing: 15 }, e); }
+    map.jumpTo(cam); await idle();
+    g.drawImage(map.getCanvas(), 0, 0, W, H); frameDeco(t);
+    if (t < A) { txt(typed('TOP SECRET', t - 0.5, 10), W / 2, 120, 26, RED, { mono: true, align: 'center', w: 700 }); if (t > 2.2) txt('別班　作戦記録', W / 2, 160, 16, '#fff', { align: 'center' }); }
+    if (t > A && t < C) txt(coordStr(cam.center), 34, H - 60, 14, 'rgba(255,255,255,.8)', { mono: true });
+    if (t > C + 2) {
+      var k = Math.min(1, (t - C - 2) / 1.5); g.fillStyle = 'rgba(0,0,0,' + 0.55 * k + ')'; g.fillRect(0, 0, W, H);
+      txt('作戦名', W / 2, H / 2 - 40, 20, AMBER, { align: 'center', w: 700 });
+      txt('神話の国', W / 2, H / 2 + 20, 52, '#fff', { align: 'center', w: 800 });
+      if (t > C + 4.5) txt('OPERATION SHINWA', W / 2, H / 2 + 64, 14, 'rgba(255,255,255,.7)', { mono: true, align: 'center' });
+    }
+  });
+}
+
 map.on('load', async function () {
   log('load');
   try {
@@ -305,6 +337,7 @@ map.on('load', async function () {
     var k = JOB.match(/^(day|trailer)-(\d)$/);
     if (k) await (k[1] === 'day' ? dayFilm : trailerFilm)(+k[2]);
     if (JOB === 'ending') await endingFilm();
+    if (JOB === 'prologue') await prologueFilm();
     var st = JOB.match(/^site-(\d)-(\d)$/);
     if (st) await siteFilm(+st[1], +st[2]);
   } catch (e) { log('ERROR ' + e.message); }
