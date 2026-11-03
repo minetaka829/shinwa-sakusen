@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 const ctx = {}; ctx.window = ctx; vm.createContext(ctx);
-for (const f of ['story.js', 'route.js', 'plot.js']) vm.runInContext(fs.readFileSync(new URL('../' + f, import.meta.url), 'utf8'), ctx);
+for (const f of ['story.js', 'route.js', 'site.js', 'plot.js']) vm.runInContext(fs.readFileSync(new URL('../' + f, import.meta.url), 'utf8'), ctx);
 const idx = JSON.parse(fs.readFileSync(new URL('../voice/index.json', import.meta.url), 'utf8'));
 const log = fs.readFileSync(process.argv[2], 'utf8').trim().split('\n').map((l) => JSON.parse(l));
 const said = log.filter((x) => x.k === 'say'), saidSet = new Set(said.map((x) => x.t));

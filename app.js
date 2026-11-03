@@ -28,21 +28,27 @@ var BOSS='<defs><radialGradient id="halo" cx="50%" cy="45%" r="55%"><stop offset
  '<clipPath id="lens"><rect x="88" y="80" width="104" height="26" rx="10"/></clipPath></defs>'+
  '<circle cx="120" cy="120" r="116" fill="url(#halo)"/>'+
  '<ellipse cx="124" cy="214" rx="86" ry="14" fill="#05080D" opacity=".55"/>'+
- '<path d="M58 204 C98 222 168 222 196 198 C214 180 212 160 200 150" stroke="#D6E5DA" stroke-width="28" fill="none" stroke-linecap="round"/>'+
+ '<g class="b-breath">'+
+ '<path class="b-tail" d="M58 204 C98 222 168 222 196 198 C214 180 212 160 200 150" stroke="#D6E5DA" stroke-width="28" fill="none" stroke-linecap="round"/>'+
  '<path d="M54 196 C40 160 80 146 120 156 C166 168 196 150 186 118" stroke="url(#skin)" stroke-width="34" fill="none" stroke-linecap="round"/>'+
+ '<g class="b-head">'+
  '<ellipse cx="140" cy="94" rx="64" ry="50" fill="url(#skin)"/>'+
- '<path d="M122 48 l7 -15 l7 15 M146 46 l7 -15 l7 15" stroke="#F0B94A" stroke-width="5" fill="none" stroke-linejoin="round"/>'+
+ '<path class="b-horn" d="M122 48 l7 -15 l7 15 M146 46 l7 -15 l7 15" stroke="#F0B94A" stroke-width="5" fill="none" stroke-linejoin="round"/>'+
  '<path d="M84 84 C78 54 104 38 134 40" stroke="#141A24" stroke-width="6" fill="none" stroke-linecap="round"/>'+
  '<rect x="72" y="78" width="18" height="30" rx="8" fill="#141A24"/>'+
- '<path d="M80 108 C82 126 94 134 110 134" stroke="#141A24" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="112" cy="134" r="5" fill="#F0B94A"/>'+
+ '<path d="M80 108 C82 126 94 134 110 134" stroke="#141A24" stroke-width="4" fill="none" stroke-linecap="round"/><circle class="b-led" cx="112" cy="134" r="5" fill="#F0B94A"/>'+
  '<rect x="84" y="76" width="112" height="34" rx="14" fill="#141A24"/>'+
  '<rect x="92" y="81" width="42" height="24" rx="9" fill="#2E3D55"/><rect x="146" y="81" width="42" height="24" rx="9" fill="#2E3D55"/>'+
+ '<g clip-path="url(#lens)"><g class="b-eyes" opacity=".45"><ellipse cx="113" cy="94" rx="6" ry="4" fill="#9FD3E8"/><ellipse cx="167" cy="94" rx="6" ry="4" fill="#9FD3E8"/></g></g>'+
  '<g clip-path="url(#lens)"><g transform="skewX(-20)"><rect class="glint" x="150" y="70" width="9" height="46" fill="#fff"/></g></g>'+
  '<path d="M190 84 C200 80 206 74 208 68" stroke="#141A24" stroke-width="3" fill="none" stroke-linecap="round"/>'+
- '<ellipse class="mouth" style="transform-origin:156px 126px" cx="156" cy="126" rx="14" ry="5" fill="#C2452D"/>';
+ '<ellipse class="mouth" style="transform-origin:156px 126px" cx="156" cy="126" rx="14" ry="5" fill="#C2452D"/>'+
+ '</g></g>';
 // gradient/clip ids must be unique per copy (a copy inside a hidden screen breaks the other one)
 function boss(p){return BOSS.replace(/id="(\w+)"/g,'id="'+p+'$1"').replace(/url\(#(\w+)\)/g,'url(#'+p+'$1)');}
-$('boss').innerHTML=boss('a'); $('bossStart').innerHTML=boss('b');
+$('boss').innerHTML=boss('a');
+// the drawn commander (bossgl.js); the simple figure stays only where WebGL is not available
+if(window.BossGL && BossGL.init($('bossCv'),$('bossFx'))) $('boss').setAttribute('hidden',''); else $('bossWrap').hidden=true;
 
 /* ===================== VOICE =====================
    Every line is pre-recorded with VOICEVOX (voice/*.m4a, listed in voice/index.json:
@@ -81,6 +87,15 @@ function clip(f){
 }
 function sentences(t){ return (String(t||'').match(/[^。！？]+[。！？]*」?/g)||[]).map(function(s){return s.trim();}).filter(Boolean); }
 function reading(s){ READ.forEach(function(r){ s=s.replace(r[0],r[1]); }); return s; }
+// how open the commander's mouth is now (0..1): from the loudness of the recording (voice/env.json, 25 steps a second)
+var curFile=null, VOICE_ENV={};
+fetch('voice/env.json').then(function(r){return r.json();}).then(function(j){VOICE_ENV=j;}).catch(function(){});
+function bossMouth(){
+  if(!speaking || !$('bossBox').classList.contains('talking')) return 0;
+  var e=curFile&&VOICE_ENV[curFile];
+  if(e && !player.paused){ var k=Math.floor(player.currentTime*25); return k<e.length?(+e[k])/9:0; }
+  return 0.35+0.35*Math.sin(Date.now()/90); // the phone's own voice: no recording to follow
+}
 function fileOf(it){ return it.pause||it.music?null:it.sfx?VOICE.sfx[it.sfx]:(VOICE[it.who]||{})[it.t]; }
 function talking(on){ $('bossBox').classList.toggle('talking',on); }
 function fitSub(){
@@ -88,7 +103,7 @@ function fitSub(){
   box.style.setProperty('--subFs',fs+'px');
   while(fs>15 && $('say').scrollHeight>box.clientHeight-30){ fs-=1; box.style.setProperty('--subFs',fs+'px'); }
 }
-function stopVoice(){ gen++; clearTimeout(gapTimer); clearTimeout(guard); queue=[]; pending={}; speaking=false; current=null; player.pause(); if(window.speechSynthesis)speechSynthesis.cancel(); talking(false); }
+function stopVoice(){ if(window.enemyScreen){ enemyScreen(false); hideArt(); } gen++; clearTimeout(gapTimer); clearTimeout(guard); queue=[]; pending={}; speaking=false; current=null; player.pause(); if(window.speechSynthesis)speechSynthesis.cancel(); talking(false); }
 /* A story beat is marked as said only when its last line starts playing, so a beat cut off
    (app closed, day changed) comes back the next time its moment comes. */
 var pending={};
@@ -153,8 +168,10 @@ function nextItem(){
   if(it==null){ speaking=false; current=null; talking(false); setWho('boss'); musicCheck(); return; }
   speaking=true;
   if(it.done) it.done.forEach(function(k){ delete pending[k]; heard(k); });
-  if(it.fx==='mute'){ ST.mute=day; save(); return nextItem(); }
-  if(it.fx==='unmute'){ ST.mute=null; save(); return nextItem(); }
+  if(it.fx==='mute'){ ST.mute=day; save(); if(window.BossGL) BossGL.leave(); return nextItem(); }
+  if(it.fx==='unmute'){ ST.mute=null; save(); if(window.BossGL) BossGL.enter(); return nextItem(); }
+  if(/^art:/.test(it.fx)){ if(window.showArt) showArt(it.fx.slice(4)); return nextItem(); }
+  if(it.fx==='artoff'){ if(window.hideArt) hideArt(); return nextItem(); }
   if(!it.t && !it.sfx && !it.pause && !it.music) return nextItem();
   if(it.quiet && muted()) return nextItem(); // chatter while the commander is gone is skipped (decided now, not when queued)
   if(it.near && pos && hav(pos,it.near[0])>it.near[1]) return nextItem(); // the place is long passed
@@ -176,7 +193,7 @@ function nextItem(){
       player.onended=after; player.onerror=after;
       player.onloadedmetadata=function(){ if(my===gen && isFinite(player.duration)) watch(player.duration*1000+2500); };
       watch(it.sfx?5000:6000+it.t.length*300);
-      player.src=url; if(!it.sfx) talking(it.who==='boss');
+      player.src=url; if(!it.sfx) talking(it.who==='boss'); curFile=it.sfx||it.who!=='boss'?null:f;
       player.play().catch(function(){ if(my===gen){ clearTimeout(guard); silent(); } });
       if(queue[0]&&fileOf(queue[0])) clip(fileOf(queue[0]));
     }).catch(function(){ if(my===gen) silent(); });
@@ -186,7 +203,7 @@ function nextItem(){
     u.onend=u.onerror=after; watch(5000+it.t.length*300); talking(true); speechSynthesis.speak(u);
   } else silent();
 }
-function setWho(w){ var e=w==='enemy'; $('sub').classList.toggle('enemy',e); $('who').textContent=e?ENEMY_NAME:'ヤマタ司令'; $('bossBox').classList.toggle('jammed',e); }
+function setWho(w){ var e=w==='enemy'; $('sub').classList.toggle('enemy',e); $('who').textContent=e?ENEMY_NAME:'ヤマタ司令'; $('bossBox').classList.toggle('jammed',e); if(window.enemyScreen) enemyScreen(e); }
 window.addEventListener('resize',fitSub);
 
 /* ===================== WAKE LOCK ===================== */
@@ -213,7 +230,8 @@ function key(i){return day+'-'+i;}
 function heard(k){ if(ST.heard[k]) return true; ST.heard[k]=1; save(); return false; }
 
 function setTarget(i,announce){
-  idx=Math.max(0,Math.min(D().m.length-1,i)); ST.idx[day]=idx; ST.onsite=null; save();
+  idx=Math.max(0,Math.min(D().m.length-1,i)); ST.idx[day]=idx; ST.onsite=null;
+  ST.legAt=ST.legAt||{}; if(!ST.legAt[key(idx)]) ST.legAt[key(idx)]=Date.now(); save();
   phase='drive'; slowSince=null; leftSince=null;
   $('onsite').hidden=true; $('doneBtn').hidden=true; $('photoBtn').hidden=true;
   $('tName').textContent=M().n;
@@ -271,22 +289,25 @@ function checkPoints(nearTarget){
   if(nearTarget) return;
   (r.detour||[]).forEach(function(p,i){ var k='d'+day+'-'+i; if(near(p,3000) && !isHeard(k) && !pending[k] && hasSlack()) play(once(k,at(quiet([{sfx:'radio'}].concat(lines(LINES.detour+p.t))),p.ll,(p.r||3000)*1.2)),{queue:true}); });
 }
+// the hour of today's sunset (fx.js works it out from the date), as 16.93 for 16:56
+function sunHour(){ return window.sunMinutes?sunMinutes(new Date()).set/60:16.93; }
 // ahead of schedule: the rest of today still fits before sunset with time to spare
 function hasSlack(){
   var ms=D().m, p=pos, mins=0;
   for(var i=idx;i<ms.length;i++){ if(ST.done[key(i)]) continue; mins+=hav(p,ms[i].ll)*1.4/1000/40*60+(ms[i].final?0:40); p=ms[i].ll; }
-  var n=new Date(), sun=new Date(n); sun.setHours(16,50,0,0);
+  var n=new Date(), sun=new Date(n); sun.setHours(0,(window.sunMinutes?sunMinutes(n).set:1016)-5,0,0);
   return n.getTime()+(mins+45)*60000<sun.getTime();
 }
 function arrive(){
   if(phase!=='drive') return;
-  phase='onsite'; slowSince=null; driveSince=null; ST.onsite={day:day,idx:idx}; save();
+  phase='onsite'; slowSince=null; driveSince=null; ST.onsite={day:day,idx:idx}; ST.at=ST.at||{}; if(!(Date.now()-(ST.at[key(idx)]||0)<12*3600000)) ST.at[key(idx)]=Date.now(); save();
   var m=M(), pose=(POSE[day]||[])[idx];
   $('onsite').hidden=false; $('doneBtn').hidden=false; $('photoBtn').hidden=false;
   $('oName').textContent=m.n;
   $('oViv').hidden=!m.viv; $('oViv').textContent=m.viv||'';
   $('oMission').innerHTML='<b>任務</b>　'+escapeHtml(m.ms)+(pose?'<br><b>撮影</b>　'+escapeHtml(pose):'');
   $('doneBtn').textContent=m.final?'本日の作戦 終了':'任務完了';
+  if(window.lockOn) lockOn(m.n);
   // whatever the road should have told first (no GPS, or "arrived" pressed early) comes before the arrival
   var own=replaced('arrive',idx)?[]:lines(m.os+(m.final?LINES.lastMission:LINES.mission)+m.ms);
   play(departItems(idx-1).concat(approachItems(true), once('ar'+day+'-'+idx,[{sfx:'radio'}].concat(own, storyItems('arrive',idx), pose&&!muted()?lines(LINES.pose+pose):[]))),{queue:true});
@@ -297,14 +318,24 @@ function complete(auto){
   $('doneBtn').hidden=true; $('photoBtn').hidden=true;
   ST.done[key(idx)]=1; save();
   var st=$('stamp'); st.hidden=false; setTimeout(function(){st.hidden=true;},1500);
+  if(window.BossGL){ BossGL.act('bow'); setTimeout(function(){ BossGL.act('wag'); },1900); }
   var done=idx, extra=storyItems('after',done).concat(pos?[]:departItems(done));
   if(M().final){ phase='end'; renderProgress(); recap(extra); return; }
   var next=idx+1;
   setTimeout(function(){
     if(!running||phase!=='leaving') return;
-    play([{sfx:'fanfare'}].concat(lines(auto?LINES.autoDone:LINES.done), once('af'+day+'-'+done,extra), lines(LINES.next(D().m[next].n)), [{music:'drive'}]),{queue:true});
+    play([{sfx:'fanfare'}].concat(lines(auto?LINES.autoDone:LINES.done), once('af'+day+'-'+done,extra), lines(LINES.next(D().m[next].n)), siteCheck(next,true), [{music:'drive'}]),{queue:true});
     setTarget(next,false);
   },300);
+}
+// closed today, or the car will get there after the last entry (site.js): one line, said once per place
+function siteCheck(i,soon){
+  var m=D().m[i], info=SITE_INFO[m.n]; if(!info) return [];
+  if(siteClosed(m.n,new Date())) return info.closedLine?once('cl'+day+'-'+i,lines(info.closedLine)):[];
+  if(!soon||!info.lateLine) return [];
+  var L=NAV[day+'-'+i], from=i>0?D().m[i-1].ll:pos;
+  var min=L?L.min*1.15:(from?hav(from,m.ll)*1.4/1000/45*60:0);
+  return siteLate(m.n,new Date(Date.now()+min*60000))?once('lt'+day+'-'+i,lines(info.lateLine)):[];
 }
 // a story item can take over the commander's own line at that moment (replace:true)
 function replaced(kind,i){ return [SCENE,SECRET,ENEMY].some(function(g){ return (g[day]||[]).some(function(x){ return x[kind]===i && x.replace; }); }); }
@@ -318,7 +349,7 @@ function storyItems(kind,i){
   [['s',SCENE],['k',SECRET]].forEach(function(g){
     (g[1][day]||[]).forEach(function(x,j){
       if(x[kind]!==i) return;
-      var body=once(g[0]+day+'-'+j,[].concat(x.mute?[{fx:'mute'}]:[], x.unmute?[{fx:'unmute'}]:[], part(x,x.who), x.who==='enemy'?[{sfx:'radio'}]:[], x.music?[{music:x.music}]:[]));
+      var body=once(g[0]+day+'-'+j,[].concat(x.mute?[{fx:'mute'}]:[], x.unmute?[{fx:'unmute'}]:[], x.art?[{fx:'art:'+x.art}]:[], part(x,x.who), x.art?[{fx:'artoff'}]:[], x.who==='enemy'?[{sfx:'radio'}]:[], x.music?[{music:x.music}]:[]));
       if(body.length) out=out.concat(x.who==='enemy'?theme(x):[], body);
     });
   });
@@ -450,7 +481,7 @@ function legTick(dKm){
   var x=leg.list[k];
   if(muted() && x.who!=='enemy') return; // while the commander is gone, only the enemy talks
   var pre=[], hh=new Date().getHours()+new Date().getMinutes()/60;
-  if(day===DAYS.length-1 && M().final && x===(((window.LEGTALK||[])[day]||[])[idx]||[]).slice(-1)[0] && hh>=16.9) pre=once('sunset'+day+'-',[{sfx:'radio'}].concat(lines(timeLine('sunset'))));
+  if(day===DAYS.length-1 && M().final && x===(((window.LEGTALK||[])[day]||[])[idx]||[]).slice(-1)[0] && hh>=sunHour()) pre=once('sunset'+day+'-',[{sfx:'radio'}].concat(lines(timeLine('sunset'))));
   if(!x.filler) return play(pre.concat(once(legKey(k),quiet([{sfx:x.who==='enemy'?'enemy':'radio'}].concat(part(x,x.who))))),{queue:true});
   var f=ST.talk['f'+day]||(ST.talk['f'+day]={myth:0,triv:0,used:[]}), myth=MYTH[day]||[], triv=R(day).trivia||D().talk||[], items=[];
   f.used=f.used||[];
@@ -461,6 +492,14 @@ function legTick(dKm){
   save();
   play(once(legKey(k),quiet(items)),{queue:true});
 }
+// no position at all (location refused): the road talk goes by time instead, from Google's driving time
+setInterval(function(){
+  if(!running||demo||pos||phase!=='drive'||!ST.legAt) return;
+  var L=NAV[day+'-'+idx], t0=ST.legAt[key(idx)]; if(!L||!t0) return;
+  var from=idx>0?D().m[idx-1].ll:day>0?DAYS[day-1].m[DAYS[day-1].m.length-1].ll:START_POS[0];
+  var f=Math.min(1,(Date.now()-t0)/(L.min*60000));
+  legTick(hav(from,M().ll)/1000*(1-f));
+},15000);
 function startClock(){
   clearInterval(clockTimer);
   function check(){
@@ -471,7 +510,7 @@ function startClock(){
     if(h>=12 && h<12.5 && phase==='drive' && !lunched && !M().lunch) play(once('noon'+day+'-',quiet([{sfx:'radio'}].concat(lines(timeLine('noon'))))),{queue:true});
     var home=(window.LEGTALK&&LEGTALK[DAYS.length-1]&&LEGTALK[DAYS.length-1][DAYS[DAYS.length-1].m.length-1])||[];
     var rollCalled=day===DAYS.length-1 && home.length && isHeard('L'+day+'-'+(DAYS[day].m.length-1)+'-'+(home.length-1));
-    if(h>=16.9 && h<18 && !rollCalled) play(once('sunset'+day+'-',[{sfx:'radio'}].concat(lines(timeLine('sunset')))),{queue:true});
+    if(h>=sunHour() && h<sunHour()+1.1 && !rollCalled) play(once('sunset'+day+'-',[{sfx:'radio'}].concat(lines(timeLine('sunset')))),{queue:true});
   }
   check(); clockTimer=setInterval(check,60000);
   clearInterval(weatherTimer); weather(); weatherTimer=setInterval(weather,30*60000);
@@ -491,16 +530,65 @@ var dbp=null;
 function db(){ return dbp||(dbp=new Promise(function(ok,ng){ var r=indexedDB.open('mythops',1); r.onupgradeneeded=function(){ r.result.createObjectStore('photos',{keyPath:'id',autoIncrement:true}); }; r.onsuccess=function(){ok(r.result);}; r.onerror=function(){ng(r.error);}; })); }
 function allPhotos(){ return db().then(function(d){ return new Promise(function(ok){ var q=d.transaction('photos').objectStore('photos').getAll(); q.onsuccess=function(){ok(q.result||[]);}; q.onerror=function(){ok([]);}; }); }).catch(function(){return [];}); }
 function photoCount(d){ return allPhotos().then(function(a){ return a.filter(function(p){return p.day===d;}).length; }); }
-function addPhoto(file){
+function addPhoto(file,to){
+  to=to||{day:day,i:idx,name:M().n,time:Date.now()};
   // shrink to 1600px so the report stays light
   return new Promise(function(ok){
     var img=new Image(), url=URL.createObjectURL(file);
     img.onload=function(){ var s=Math.min(1,1600/Math.max(img.width,img.height)), c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s); c.getContext('2d').drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(url); c.toBlob(ok,'image/jpeg',0.85); };
     img.onerror=function(){ ok(file); };
     img.src=url;
-  }).then(function(blob){ return db().then(function(d){ return new Promise(function(ok){ var tx=d.transaction('photos','readwrite'); tx.objectStore('photos').add({day:day,i:idx,name:M().n,time:Date.now(),blob:blob}); tx.oncomplete=ok; tx.onerror=ok; }); }); });
+  }).then(function(blob){ return db().then(function(d){ return new Promise(function(ok){ var tx=d.transaction('photos','readwrite'); tx.objectStore('photos').add({day:to.day,i:to.i,name:to.name,time:to.time,blob:blob}); tx.oncomplete=ok; tx.onerror=ok; }); }); });
 }
 $('photoBtn').onclick=function(){ $('photoIn').click(); };
+// photos from the other phone (AirDrop etc.): each goes to the mission where it was taken
+// (by the photo's own place, else by its time between arrivals; else the mission now)
+$('importBtn').onclick=function(){ $('importIn').click(); };
+$('importIn').onchange=function(){
+  var fs=[].slice.call(this.files||[]); this.value=''; if(!fs.length) return;
+  var count={}, st=$('importState'); st.textContent='取りこみ中… 0 / '+fs.length;
+  fs.reduce(function(p,f,k){ return p.then(function(){
+    return exifInfo(f).then(function(x){ var to=photoMission(x,f); count[to.name]=(count[to.name]||0)+1; st.textContent='取りこみ中… '+(k+1)+' / '+fs.length; return demoMode?null:addPhoto(f,to); });
+  }); },Promise.resolve()).then(function(){
+    st.textContent=fs.length+'枚を取りこみました（'+Object.keys(count).map(function(n){ return n+' '+count[n]; }).join('、')+'）'; openReport();
+  });
+};
+function photoMission(x,f){
+  var best=null;
+  if(x.ll) DAYS.forEach(function(d,di){ d.m.forEach(function(m,i){ var h=hav(x.ll,m.ll); if(h<Math.max(1500,m.r*3)&&(!best||h<best.h)) best={h:h,day:di,i:i,name:m.n}; }); });
+  var t=x.time||0;
+  if(!best && t && ST.at){ var ks=Object.keys(ST.at).filter(function(k){ return ST.at[k]<=t; }).sort(function(a,b){ return ST.at[b]-ST.at[a]; });
+    if(ks.length){ var p=ks[0].split('-'), di=+p[0], i=+p[1]; best={day:di,i:i,name:DAYS[di].m[i].n}; } }
+  if(!best) best={day:-1,i:-1,name:'未分類'};
+  best.time=t||Date.now(); return best;
+}
+// DateTimeOriginal and GPS from a JPEG's EXIF (iPhone keeps them when a photo is shared as a file)
+function exifInfo(f){
+  return f.slice(0,131072).arrayBuffer().then(function(buf){
+    var v=new DataView(buf), out={};
+    if(v.getUint16(0)!==0xFFD8) return out;
+    var o=2;
+    while(o<v.byteLength-4){
+      var mk=v.getUint16(o), len=v.getUint16(o+2);
+      if(mk===0xFFE1 && v.getUint32(o+4)===0x45786966){ readTiff(v,o+10,out); break; }
+      o+=2+len;
+    }
+    return out;
+  }).catch(function(){ return {}; });
+}
+function readTiff(v,t,out){
+  var le=v.getUint16(t)===0x4949;
+  function u16(p){ return v.getUint16(p,le); } function u32(p){ return v.getUint32(p,le); }
+  function ifd(p){ var n=u16(t+p), e={}; for(var k=0;k<n;k++){ var q=t+p+2+k*12; e[u16(q)]={type:u16(q+2),count:u32(q+4),at:q+8}; } return e; }
+  function str(x){ var p=x.count>4?t+u32(x.at):x.at, s=''; for(var k=0;k<x.count-1;k++) s+=String.fromCharCode(v.getUint8(p+k)); return s; }
+  function rats(x){ var p=t+u32(x.at), a=[]; for(var k=0;k<x.count;k++) a.push(u32(p+k*8)/u32(p+k*8+4)); return a; }
+  var i0=ifd(u32(t+4));
+  if(i0[0x8769]){ var ex=ifd(u32(i0[0x8769].at)), d=ex[0x9003];
+    if(d){ var m=str(d).match(/(\d+):(\d+):(\d+) (\d+):(\d+):(\d+)/); if(m) out.time=new Date(+m[1],m[2]-1,+m[3],+m[4],+m[5],+m[6]).getTime(); } }
+  if(i0[0x8825]){ var g=ifd(u32(i0[0x8825].at));
+    if(g[2]&&g[4]){ var la=rats(g[2]), lo=rats(g[4]); out.ll=[la[0]+la[1]/60+la[2]/3600, lo[0]+lo[1]/60+lo[2]/3600];
+      if(g[1]&&str(g[1])==='S') out.ll[0]=-out.ll[0]; if(g[3]&&str(g[3])==='W') out.ll[1]=-out.ll[1]; } }
+}
 $('photoIn').onchange=function(){ var f=this.files&&this.files[0]; this.value=''; if(!f) return; (demoMode?Promise.resolve():addPhoto(f)).then(function(){ reply(PHOTO_REPLY,window.PHOTO_REPLY_ENEMY,'photo'); }); };
 
 var reportUrls=[];
@@ -518,6 +606,8 @@ function openReport(){
       }).join('');
       return '<section><h3>'+escapeHtml(d.label)+'　'+escapeHtml(d.chap)+'</h3><ul>'+items+'</ul></section>';
     }).join('');
+    var un=ps.filter(function(p){ return p.day<0; });
+    if(un.length) html+='<section><h3>未分類（撮った場所と時刻が分からなかった写真）</h3><ul><li><span class="mk"></span><span class="ph">'+un.map(function(p){return '<img alt="" src="'+photoUrl(reportUrls,p.blob)+'">';}).join('')+'</span></li></ul></section>';
     $('reportBody').innerHTML=html; $('report').hidden=false;
   });
 }
@@ -552,6 +642,25 @@ $('reportSave').onclick=function(){
   }).then(function(){ b.disabled=false; b.textContent='画像にして保存・共有'; });
 };
 $('reportBtn').onclick=openReport;
+// a printable report (iPhone: print → save as PDF)
+$('reportPrint').onclick=function(){
+  allPhotos().then(function(ps){
+    var urls=[], km=0; Object.keys(ST.km).forEach(function(d){ km+=ST.km[d]||0; });
+    $('printArea').innerHTML='<h1>作戦報告書　作戦名：神話の国</h1><div class="meta">別班 島根作戦　走行 約'+Math.round(km/1000)+'km　写真 '+ps.length+'枚</div>'+
+      DAYS.map(function(d,di){
+        return '<h2>'+escapeHtml(d.label)+'　'+escapeHtml(d.chap)+'</h2>'+d.m.map(function(m,i){
+          var mine=ps.filter(function(p){ return p.day===di&&p.i===i; }), k=di+'-'+i, sk=(ST.skipped||{})[k];
+          return '<div class="m"><b>'+escapeHtml(m.n)+'</b><span>'+(sk?'とばし':ST.done[k]?'任務完了':'未実施')+'</span>'+
+            (mine.length?'<div class="ph">'+mine.map(function(p){ return '<img alt="" src="'+photoUrl(urls,p.blob)+'">'; }).join('')+'</div>':'')+'</div>';
+        }).join('');
+      }).join('')+(function(){ var un=ps.filter(function(p){ return p.day<0; }); return un.length?'<h2>未分類</h2><div class="m"><div class="ph">'+un.map(function(p){ return '<img alt="" src="'+photoUrl(urls,p.blob)+'">'; }).join('')+'</div></div>':''; })();
+    // print once the photos are drawn
+    Promise.all([].slice.call($('printArea').querySelectorAll('img')).map(function(im){ return im.decode?im.decode().catch(function(){}):null; }))
+      .then(function(){ window.print(); setTimeout(function(){ freeUrls(urls); $('printArea').innerHTML=''; },60000); });
+  });
+};
+$('filmBtn').onclick=function(){ $('menu').hidden=true; replayFilm(); };
+$('filmClose').onclick=function(){ closeFilm(); };
 $('reportClose').onclick=function(){ $('report').hidden=true; freeUrls(reportUrls); };
 
 var endTimer=null;
@@ -564,12 +673,12 @@ function openEnding(){
       setTimeout(function(){ var old=$('endImg').src; $('endImg').src=URL.createObjectURL(p.blob); if(old&&old.indexOf('blob:')===0) URL.revokeObjectURL(old); $('endImg').style.opacity=1; $('endCap').textContent=p.name; },600);
       i++;
     };
-    show(); clearInterval(endTimer); endTimer=setInterval(show,4500);
+    show(); clearInterval(endTimer); endTimer=setInterval(show,4500); if(window.endingFilm) endingFilm();
     stopVoice(); play([{sfx:'fanfare'}].concat(lines(ENDING),[{pause:3},{sfx:'enemy'}],lines(ENDING_EXTRA.t,'enemy'),[{sfx:'radio'}],lines(ENDING_EXTRA.reply),[{music:'ending'}]));
   });
 }
 $('endBtn').onclick=openEnding;
-$('endClose').onclick=function(){ clearInterval(endTimer); $('ending').hidden=true; };
+$('endClose').onclick=function(){ clearInterval(endTimer); $('ending').hidden=true; var v=$('endV'); v.pause(); if(v.src){ URL.revokeObjectURL(v.src); v.removeAttribute('src'); } v.hidden=true; };
 
 /* ===================== GOURMET ===================== */
 function renderGourmet(){
@@ -666,13 +775,13 @@ function musicCheck(){
 }
 function musicStop(){ if(!spReady()||!musicOn) return; musicOn=false; ++cueN; curCue=null; clearTimeout(backTimer); spApi('/me/player/pause',{method:'PUT'}).catch(function(){}); }
 // the phone's Spotify app, made the active player (a command to an idle device fails)
-function spDevice(){
+function spDevice(quiet){
   return spApi('/me/player/devices').then(function(r){return r.json();}).then(function(j){
     var ds=j.devices||[], dv=ds.filter(function(x){return x.is_active;})[0]||ds.filter(function(x){return x.type==='Smartphone';})[0]||ds[0];
     if(!dv){
       spNote('Spotify のアプリが見つかりません。一度 Spotify を開いてください。'); flashBgm();
       // said aloud at most every 30 minutes, and not while the commander is gone
-      if(!muted() && Date.now()-(spDevice.told||0)>30*60000){ spDevice.told=Date.now(); say(LINES.spNoDevice,{queue:true}); }
+      if(!quiet && running && !muted() && Date.now()-(spDevice.told||0)>30*60000){ spDevice.told=Date.now(); say(LINES.spNoDevice,{queue:true}); }
       return null;
     }
     if(dv.is_active) return dv.id;
@@ -715,9 +824,9 @@ function unlockAudio(){
 $('mReal').onclick=function(){mode='real';$('mReal').setAttribute('aria-pressed','true');$('mDemo').setAttribute('aria-pressed','false');$('modeNote').textContent='位置情報で自動的に進みます。旅行の当日に使ってください（家で試すときは「デモ走行」で）。';};
 $('mDemo').onclick=function(){mode='demo';$('mDemo').setAttribute('aria-pressed','true');$('mReal').setAttribute('aria-pressed','false');$('modeNote').textContent='家で試す用です。車が高速で自動走行し、各地点で止まって案内します。';};
 (function initStart(){
-  var t=new Date(), ds=t.getFullYear()+'-'+(t.getMonth()+1)+'-'+t.getDate();
-  var map={'2026-12-5':0,'2026-12-6':1,'2026-12-7':2};
-  $('daysel').value=String(map[ds]!=null?map[ds]:(ST.day||0));
+  // the dates are not fixed: start on the first day that is not finished yet
+  var d=0; while(d<DAYS.length-1 && ST.done[d+'-'+(DAYS[d].m.length-1)]) d++;
+  $('daysel').value=String(d);
   if(ST.done['2-'+(DAYS[2].m.length-1)]) $('endBtn').hidden=false;
 })();
 function showConsole(brief){
@@ -753,8 +862,13 @@ $('go').onclick=function(){
   play(once('open'+day,[{sfx:'radio'}].concat(lines(D().open), new Date().getHours()<10?lines(timeLine('morning')):[])),{queue:true});
   // story beats that a closed app cut off (after a mission, or of a skipped one) come back now
   for(var j=0;j<D().m.length;j++){ if(ST.done[key(j)]) play(storyItems('approach',j).concat(storyItems('arrive',j),storyItems('after',j)),{queue:true}); }
+  if(window.applySky) applySky();
+  if(window.BossGL){ if(muted()) BossGL.leave(); else BossGL.enter(); }
   if(finished){ phase='end'; showRecapBtn(); }
   else if(wasOnsite) arrive(); // reopened at a mission: still there (nothing said twice)
+  // the day's checks: fuel, and places closed today (said once)
+  if(DAY_NOTE[day]) play(once('note'+day,lines(DAY_NOTE[day])),{queue:true});
+  for(var c=i;c<D().m.length;c++) if(!ST.done[key(c)]) play(siteCheck(c,c===i&&!wasOnsite),{queue:true});
   if(first) cue('start'); // reopening keeps whatever music is on
   if(demo){ startDemo(); } else startGps();
   startClock();
@@ -793,6 +907,8 @@ $('resetDay').onclick=function(){
   Object.keys(ST.done).forEach(function(k){ if(k.indexOf(day+'-')===0) delete ST.done[k]; });
   Object.keys(ST.heard).forEach(function(k){ if(mine.test(k)) delete ST.heard[k]; });
   delete ST.talk['f'+day]; delete ST.talk['long'+day]; Object.keys(ST.talk).forEach(function(k){ if(k.indexOf('leg'+day+'-')===0) delete ST.talk[k]; }); if(ST.skipped) Object.keys(ST.skipped).forEach(function(k){ if(k.indexOf(day+'-')===0) delete ST.skipped[k]; }); leg=null; ST.km[day]=0; if(ST.mute===day) ST.mute=null; ST.onsite=null;
+  [ST.legAt,ST.at].forEach(function(o){ if(o) Object.keys(o).forEach(function(k){ if(k.indexOf(day+'-')===0) delete o[k]; }); });
+  Object.keys(ST.talk).forEach(function(k){ if(new RegExp('^film-(leg|site)-'+day+'-|^film-day-'+day+'$').test(k)) delete ST.talk[k]; });
   stopVoice(); save(); setTarget(0,true); delete this.dataset.sure; this.textContent='今日の進みぐあいをリセット';
 };
 

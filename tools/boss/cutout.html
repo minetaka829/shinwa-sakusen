@@ -1,0 +1,29 @@
+<!doctype html><meta charset="utf-8">
+<!-- 司令の絵の背景（無地の紺）を透明にして、boss.png として書き出す（制作用）。tools/film/server.py で開く -->
+<canvas id="c"></canvas>
+<script>
+const img = new Image();
+img.onload = async () => {
+  const S = 768, c = document.getElementById('c'); c.width = S; c.height = S;
+  const g = c.getContext('2d'); g.drawImage(img, 0, 0, S, S);
+  const d = g.getImageData(0, 0, S, S), p = d.data;
+  // 背景色は四隅の平均
+  let bg = [0, 0, 0]; [[2, 2], [S - 3, 2], [2, S - 3], [S - 3, S - 3]].forEach(([x, y]) => { const i = (y * S + x) * 4; bg = bg.map((v, k) => v + p[i + k] / 4); });
+  const dist = (i) => Math.hypot(p[i] - bg[0], p[i + 1] - bg[1], p[i + 2] - bg[2]);
+  // 外側からたどって、背景に近い色だけを消す（絵の中の紺色＝帽子やマントは消さない）
+  const seen = new Uint8Array(S * S), q = [];
+  for (let x = 0; x < S; x++) { q.push(x, (S - 1) * S + x); } for (let y = 0; y < S; y++) { q.push(y * S, y * S + S - 1); }
+  while (q.length) {
+    const k = q.pop(); if (seen[k]) continue; seen[k] = 1;
+    const i = k * 4, dd = dist(i); if (dd > 60) continue;
+    p[i + 3] = dd < 22 ? 0 : Math.round(255 * (dd - 22) / 38); // ふちはなめらかに
+    const x = k % S, y = (k / S) | 0;
+    if (x > 0) q.push(k - 1); if (x < S - 1) q.push(k + 1); if (y > 0) q.push(k - S); if (y < S - 1) q.push(k + S);
+  }
+  g.putImageData(d, 0, 0);
+  const b = await new Promise((ok) => c.toBlob(ok, 'image/png'));
+  await fetch('/out/boss.png', { method: 'POST', body: b });
+  document.title = 'done';
+};
+img.src = 'C.png';
+</script>

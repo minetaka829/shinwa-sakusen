@@ -22,5 +22,8 @@ claude.aiのArtifactでは位置情報が使えないため、GitHub Pagesで公
 
 ## ファイルの分担（第3版から）
 - `index.html` 画面と見た目 ／ `app.js` 動き ／ `story.js` 任務地・定型のセリフ・読み方の表 ／ `route.js` 道中の案内（下調べの結果） ／ `plot.js` 物語
-- `voice/` 録音した声と効果音。セリフを直したら VOICEVOX エンジン（`~/voicevox_engine/engine/run`）を起動して `node tools/make-voice.mjs`（変わった文だけ録り直す）
+- `boss.png` / `bossgl.js` 司令の絵（画像生成AIで作り `tools/gen-boss.py`、背景を `tools/boss/cutout.html` で透明に）と、その絵を網目状に変形させて動かす処理
+- `fx.js` / `site.js` 画面の演出と作戦映像／現地の情報（営業時間・ナビの経由地・歩く順路）
+- `film/` 作戦映像（`tools/film/render-all.mjs` で書き出し、`node tools/film/index.mjs` で一覧を作る）
+- `voice/` 録音した声と効果音。セリフを直したら VOICEVOX エンジン（`~/voicevox_engine/engine/run`）を起動して `node tools/make-voice.mjs`（変わった文だけ録り直す）。続けて `node tools/voice-env.mjs`（司令の口の動き用に、声の大きさを記録する）
 - 声の種類は `tools/voice.json`。物語の点検結果は `tools/story-review.md`

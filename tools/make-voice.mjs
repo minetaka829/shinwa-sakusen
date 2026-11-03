@@ -17,7 +17,7 @@ const RATE = 24000;
 const ctx = {};
 ctx.window = ctx;
 vm.createContext(ctx);
-for (const f of ['story.js', 'route.js', 'plot.js']) {
+for (const f of ['story.js', 'route.js', 'site.js', 'plot.js']) {
   const p = path.join(ROOT, f);
   if (fs.existsSync(p)) vm.runInContext(fs.readFileSync(p, 'utf8'), ctx, { filename: f });
 }

@@ -111,7 +111,9 @@
         }
         if (scenario === 'chaos' && rnd() < 0.0004) { log({ k: 'chaos', t: 'voice off/on' }); document.getElementById('voice').click(); document.getElementById('voice').click(); }
         if (scenario === 'nogps') { // 位置なし: 着いたら押す、話し終えたら完了を押す
-          if (phase === 'drive' && !speaking) { stay = 0; document.getElementById('here').click(); }
+          // 着くのは Google の所要時間がたってから（その間、道中の話は時間で流れる）
+          var L = NAV[day + '-' + idx], t0 = (ST.legAt || {})[day + '-' + idx];
+          if (phase === 'drive' && !speaking && (!L || !t0 || Date.now() - t0 > L.min * 60000)) { stay = 0; document.getElementById('here').click(); }
           else if (phase === 'onsite' && !speaking && ++stay > 60) { stay = 0; document.getElementById('doneBtn').click(); }
           return;
         }
