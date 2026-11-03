@@ -164,7 +164,9 @@ function endingFilm(){
 /* ===================== ナビ開始（止まっているときだけ出す） ===================== */
 setInterval(function(){
   var b=$('navBtn'); if(!b) return;
-  var show=running && phase==='drive' && (stopped() || !pos) && Date.now()-((ST.legAt||{})[key(idx)]||0)<15*60000 && (!pos || hav(pos,M().ll)>1000);
+  // 区間の始めは止まったらすぐ。途中は30秒以上止まっているとき（休憩など）だけ出す。信号待ちのたびに出ないように
+  var fresh15=Date.now()-((ST.legAt||{})[key(idx)]||0)<15*60000, rest=calmSince&&Date.now()-calmSince>30000;
+  var show=running && phase==='drive' && (!pos || (fresh15?stopped():rest)) && (!pos || hav(pos,M().ll)>1000);
   if(show) b.href=navUrl(day,idx);
   b.hidden=!show;
 },1000);
@@ -195,8 +197,9 @@ function cacheFilms(cb){
 var READY_MANUAL=[
   ['gmap','Google マップのアプリを入れて、CarPlay で映ることを確かめた'],
   ['back','「ナビ開始」でナビが始まったら、iPhone の画面はこのアプリに戻す（車の画面は Google マップのまま。戻さないと司令が話せない）'],
-  ['sakurai','櫻井家住宅が、行く日に開いているか電話で確かめた（0854-56-0800）'],
-  ['kawakyo','夕食の店を予約した（川京は日曜休みの情報あり 0852-22-1312）'],
+  ['lock','設定 → 画面表示と明るさ → 自動ロック を「なし」にした（走行中に画面が消えると、司令が止まる）'],
+  ['book','宿と食事の予約をした（予約の一覧は Claude から渡されたもの）'],
+  ['tire','冬用タイヤ（またはチェーン）を用意した'],
   ['volume','マナーモードを切り、音量を上げた']
 ];
 function readyRow(id,label,state,note,btn){
@@ -209,7 +212,10 @@ function openReady(){
   ST.ready=ST.ready||{};
   $('readyList').innerHTML=[
     readyRow('voice','司令の声を保存'),readyRow('film','作戦映像を保存'),readyRow('keep','保存した声と映像を消されないようにする'),
-    readyRow('geo','位置情報'),readyRow('sp','Spotify'),readyRow('wake','走行中も画面を消さない')
+    readyRow('geo','位置情報'),readyRow('sp','Spotify'),readyRow('wake','走行中も画面を消さない'),
+    '<li class="rd man"><b>実際に鳴らして確かめる（物語の中身は出ません）</b></li>',
+    readyRow('tvoice','司令の声が鳴るか','','','鳴らす'),readyRow('tmix','Spotify の曲と声が同時に聞こえるか','','Spotify と連携してから','曲と声を鳴らす'),
+    readyRow('tfilm','作戦映像が再生できるか','','','再生する'),readyRow('tboss','司令の絵の動きがなめらかか','','別のページで、ボタンを押して動きを見る','確かめる')
   ].join('')+READY_MANUAL.map(function(x){
     return '<li class="rd man"><label><input type="checkbox" data-k="'+x[0]+'"'+(ST.ready[x[0]]?' checked':'')+'><b>'+escapeHtml(x[1])+'</b></label></li>';
   }).join('');
@@ -227,10 +233,41 @@ function openReady(){
   else spDevice(true).then(function(id){ setRow('sp','Spotify',id?'ok':'ng',id?'つながりました':'Spotify のアプリを一度開いて、何か再生してから戻ってください','もう一度確かめる'); });
   setRow('wake','走行中も画面を消さない','wakeLock' in navigator?'ok':'ng',('wakeLock' in navigator?'使えます。ただし iOS 18.4 より前のホーム画面アプリでは効かないことがあります。':'この iPhone では使えません。')+'念のため、設定 → 画面表示と明るさ → 自動ロック を「なし」に');
 }
+// 実機での確認: 声を1文鳴らして、最後まで再生できたか（聞こえたかは本人が印をつける）
+function testVoice(id,label){
+  var f=(VOICE.boss||{})['こちらヤマタ司令。']; if(!f){ setRow(id,label,'ng','声の一覧が読めていません'); return; }
+  unlockAudio && unlockAudio();
+  clip(f).then(function(u){
+    var t0=performance.now(); player.onended=function(){ setRow(id,label,'ok','最後まで再生できました（'+((performance.now()-t0)/1000).toFixed(1)+'秒）。聞こえなければ、音量とマナーモードを確かめてください','もう一度'); };
+    player.onerror=function(){ setRow(id,label,'ng','再生できませんでした','もう一度'); };
+    player.src=u; return player.play();
+  }).catch(function(e){ setRow(id,label,'ng','再生が止められました（'+(e&&e.name||'')+'）','もう一度'); });
+}
+// 作戦映像を1本、数秒だけ流してみる
+function testFilm(){
+  var L='作戦映像が再生できるか', v=$('filmV');
+  showFilm('test','leg-0-0','再生の確認',[['確認','数秒で閉じます']]);
+  var t0=Date.now(), w=setInterval(function(){
+    if(v.currentTime>1){ clearInterval(w); closeFilm(); setRow('tfilm',L,'ok','再生できました','もう一度'); }
+    else if(Date.now()-t0>12000){ clearInterval(w); closeFilm(); setRow('tfilm',L,'ng',v.controls?'自動で再生されませんでした（低電力モードだと止まります。映像の再生ボタンで見られます）':'再生できませんでした','もう一度'); }
+  },300);
+}
+// 結果を文字でまとめてコピー（物語の中身は含まない）
+function copyReady(){
+  var txt=[].slice.call(document.querySelectorAll('#readyList .rd')).map(function(li){ return li.innerText.replace(/\n+/g,' / '); }).join('\n');
+  txt+='\n端末: '+navigator.userAgent+'\n画面: '+screen.width+'×'+screen.height+' 表示中 '+innerWidth+'×'+innerHeight+(navigator.standalone?'（ホーム画面のアプリ）':'（Safari）');
+  (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(function(){ $('readyCopy').textContent='コピーしました'; }).catch(function(){ prompt('この文を選んでコピーしてください',txt); });
+}
 $('readyBtn').onclick=openReady;
+$('readyCopy').onclick=copyReady;
 $('readyClose').onclick=function(){ $('ready').hidden=true; };
 $('readyList').onclick=function(e){
   var a=e.target.getAttribute('data-act'); if(a==='sp') spReady()?openReady():spLogin();
+  if(a==='tvoice') testVoice('tvoice','司令の声が鳴るか');
+  if(a==='tmix'){ if(!spReady()){ setRow('tmix','Spotify の曲と声が同時に聞こえるか','ng','先に Spotify と連携してください','曲と声を鳴らす'); return; } cue('start'); setRow('tmix','Spotify の曲と声が同時に聞こえるか','','曲を流しています。3秒後に司令が話します'); setTimeout(function(){ testVoice('tmix','Spotify の曲と声が同時に聞こえるか'); },3500); }
+  if(a==='tfilm') testFilm();
+  if(a==='tboss') location.href='boss-preview.html';
+  if(a==='copy') copyReady();
   var k=e.target.getAttribute('data-k'); if(k){ ST.ready=ST.ready||{}; ST.ready[k]=e.target.checked; save(); }
 };
 
@@ -254,6 +291,10 @@ var ART={
     return '<svg viewBox="0 0 400 400" role="img" aria-label="八つの頭をもつオロチの古い絵">'+
       '<defs><radialGradient id="paper" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#EFE3C4"/><stop offset="1" stop-color="#C9B48A"/></radialGradient></defs>'+
       '<rect width="400" height="400" rx="10" fill="url(#paper)"/>'+
+      // 左上の雲のすみに、白い小さな頭がひとつ、うっすらのぞいている（気づいた人だけが分かる）
+      '<g opacity=".9"><path d="M30 92 q12 -22 34 -12 q10 -18 30 -6 q22 -4 22 16 q14 6 4 18 H34 q-14 -4 -4 -16z" fill="#F4ECD8" stroke="#D8C9A6" stroke-width="2"/>'+
+      '<g transform="translate(82 98) rotate(-8)"><path d="M-10 4 Q-12 -10 4 -12 Q18 -11 21 -2 Q17 6 4 7 Z" fill="#FBF8F1" stroke="#CDBE9C" stroke-width="1.5"/><circle cx="6" cy="-5" r="1.8" fill="#B8A67E"/></g>'+
+      '<path d="M40 104 h76" stroke="#F4ECD8" stroke-width="10" stroke-linecap="round"/></g>'+
       '<g opacity=".35" fill="none" stroke="#7A6A4C" stroke-width="2"><path d="M20 340 Q80 320 140 345 T260 340 T380 335"/><path d="M20 362 Q90 345 160 366 T300 360 T380 358"/></g>'+
       necks+heads+
       '<ellipse cx="200" cy="318" rx="70" ry="30" fill="#2C2A26"/><ellipse cx="200" cy="314" rx="58" ry="20" fill="#5A3A2A"/>'+

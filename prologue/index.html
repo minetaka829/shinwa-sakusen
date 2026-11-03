@@ -46,10 +46,10 @@ button.primary,a.primary{background:var(--gold);border-color:var(--gold);color:v
 .panel input[type=text],.panel input[type=date]{font-family:var(--body);font-size:18px;font-weight:700;min-height:54px;border-radius:12px;border:1.5px solid var(--line);background:var(--panel2);color:var(--fg);padding:0 14px;width:100%}
 .row{display:flex;gap:10px}.row>*{flex:1}
 .oath{background:var(--panel);border:1.5px dashed var(--gold);border-radius:14px;padding:12px 14px;font-size:17px;line-height:1.7;font-weight:900}
-.finger{align-self:center;width:96px;height:96px;border-radius:50%;border:2px solid var(--gold);background:var(--panel2);display:grid;place-items:center;position:relative;touch-action:none;user-select:none;-webkit-user-select:none}
+.finger{-webkit-touch-callout:none;align-self:center;width:96px;height:96px;border-radius:50%;border:2px solid var(--gold);background:var(--panel2);display:grid;place-items:center;position:relative;touch-action:none;user-select:none;-webkit-user-select:none}
 .finger svg{width:58px;height:58px;color:var(--gold)}
 .finger .ring{position:absolute;inset:-6px;border-radius:50%;background:conic-gradient(var(--gold) calc(var(--p,0)*1%),transparent 0);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px))}
-.card img{width:100%;border-radius:14px;box-shadow:0 10px 30px #000a}
+.card img{max-height:40dvh;object-fit:contain;width:100%;border-radius:14px;box-shadow:0 10px 30px #000a}
 /* 待機（毎日の指令） */
 .count{display:flex;align-items:baseline;gap:8px;justify-content:center}
 .count b{font-family:var(--disp);font-weight:400;font-size:44px;color:var(--gold);line-height:1}
@@ -113,7 +113,7 @@ button.primary,a.primary{background:var(--gold);border-color:var(--gold);color:v
       <details class="past" id="past"><summary>これまでの指令</summary><ol id="pastList"></ol></details>
       <div class="links">
         <button id="againFilm">幕開けをもう一度</button><button id="showCard">身分証を見る</button>
-        <button id="changeDate">出発日を変える</button><a class="btn" href="../">作戦アプリへ</a>
+        <button id="changeDate">出発日を変える</button><button id="howMain">作戦アプリの開き方</button>
       </div>
     </div>
   </div>

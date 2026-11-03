@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" media="print" onload="this.media='all'">
 <style>
 /* Layout: in-car mission console. One column, big type, nothing needs a tap while driving.
    Single dark "operations room" look, readable at night and in sun. */
@@ -91,7 +91,7 @@ h1{margin:0;font-family:var(--disp);font-weight:400;line-height:1.15}
 .b-horn{transform-origin:141px 47px;animation:horn 6.5s ease-in-out infinite}
 @keyframes horn{0%,88%,94%,100%{transform:none}91%{transform:translateY(-2px) scaleY(1.08)}}
 @keyframes glint{0%,86%{transform:translateX(-30px);opacity:0}90%{opacity:.9}96%,100%{transform:translateX(40px);opacity:0}}
-.sub{background:var(--fg);color:#141A24;border-radius:20px;padding:12px 18px 14px;height:calc(var(--subFs,24px)*1.6*3 + 46px);overflow:hidden;display:flex;flex-direction:column;gap:4px}
+.sub{background:var(--fg);color:#141A24;border-radius:20px;padding:12px 18px 14px;height:calc(24px*1.6*3 + 46px);overflow:hidden;display:flex;flex-direction:column;gap:4px}
 .sub .who{font-size:12px;font-weight:900;color:#6A7488;letter-spacing:.1em}
 .sub #say{font-size:var(--subFs,24px);line-height:1.6;font-weight:900;word-break:auto-phrase}
 .startBtns{display:flex;gap:8px}
@@ -108,6 +108,7 @@ button.done{min-height:68px;font-size:21px}
 .jammed svg,.jammed .bossWrap{animation:jam .18s steps(2) infinite}
 .bossWrap{position:relative;z-index:0;width:100%;height:100%;min-height:0;display:grid;place-items:center;will-change:transform}
 .console .bar,.console .sub,.console .acts{position:relative;z-index:2}
+.resume{position:absolute;left:16px;right:16px;bottom:calc(150px + env(safe-area-inset-bottom,0px));z-index:6;min-height:64px;font-size:19px;box-shadow:0 8px 30px #000a}
 .bossWrap canvas{grid-area:1/1;position:relative}
 .bossWrap canvas+canvas{z-index:1} /* 口とまぶたは絵より上 */
 @keyframes jam{50%{transform:translate(3px,-2px);filter:hue-rotate(140deg) saturate(2)}}
@@ -181,6 +182,10 @@ details summary{cursor:pointer;font-weight:900;color:var(--sub);min-height:40px;
 .console.hijack{animation:hijack .7s steps(7)}
 @keyframes hijack{0%{filter:none}15%{filter:hue-rotate(160deg) saturate(3) contrast(1.6);transform:translate(-6px,2px)}30%{filter:invert(1)}45%{filter:hue-rotate(-90deg) saturate(2);transform:translate(5px,-3px)}60%{filter:brightness(2)}80%{filter:hue-rotate(40deg);transform:translate(-2px,1px)}100%{filter:none;transform:none}}
 /* 目標確保: 照準がしぼられて、名前が出る */
+.nameBox{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:rgba(8,12,18,.7);padding:16px}
+.nameBox .in{display:flex;flex-direction:column;gap:12px;width:min(88vw,360px);background:#141A22;border:1px solid #2A3442;border-radius:14px;padding:20px}
+.nameBox label{font-weight:900;color:#F0B94A}
+.nameBox input{font-size:22px;padding:10px 12px;border-radius:10px;border:1px solid #3A4656;background:#0C1117;color:#F1F3F6}
 .lock{position:fixed;inset:0;z-index:25;display:grid;place-items:center;pointer-events:none;background:rgba(8,12,18,.55)}
 .lock .in{display:flex;flex-direction:column;align-items:center;gap:14px}
 .lock svg{width:min(62vw,260px);height:auto;color:#E5634B}
@@ -214,7 +219,7 @@ details summary{cursor:pointer;font-weight:900;color:var(--sub);min-height:40px;
 .film .vwrap:has(video[hidden]) + .file{flex:1;justify-content:center;font-size:17px}
 /* 作戦資料の絵（物語の場面で、司令の上に重ねて出す） */
 .art{position:fixed;left:0;right:0;top:calc(70px + env(safe-area-inset-top,0px));z-index:29;display:flex;justify-content:center;pointer-events:none;animation:fadeup .6s both}
-.art svg{width:min(86vw,420px);height:auto;border-radius:10px;box-shadow:0 10px 40px #000a;transform:rotate(-1.5deg)}
+.art svg{width:min(86vw,420px);height:auto;max-height:calc(100dvh - 120px);border-radius:10px;box-shadow:0 10px 40px #000a;transform:rotate(-1.5deg)}
 /* 出発前の準備点検 */
 .ready{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .ready .rd{display:grid;grid-template-columns:56px 1fr;gap:10px;align-items:start;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
@@ -280,14 +285,19 @@ details summary{cursor:pointer;font-weight:900;color:var(--sub);min-height:40px;
     <button class="menuBtn" id="menuBtn" aria-label="メニュー"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
   </header>
   <div class="stage" id="bossBox"><div class="bossWrap" id="bossWrap"><canvas id="bossCv" aria-hidden="true"></canvas><canvas id="bossFx" aria-hidden="true"></canvas></div><svg viewBox="0 0 240 240" aria-hidden="true" id="boss"></svg></div>
+  <button class="primary resume" id="resumeVoice" hidden>▶ タップで司令の声を再開</button>
   <div class="sub" id="sub" aria-live="polite"><span class="who" id="who">ヤマタ司令</span><span id="say"></span></div>
-  <div class="acts"><a class="btn primary done" id="navBtn" hidden target="_blank" rel="noopener">ナビ開始（Google マップ）</a><button class="photo" id="photoBtn" hidden aria-label="写真を撮る"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.6" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>写真</button><button class="primary done" id="doneBtn" hidden>任務完了</button></div>
+  <div class="acts"><a class="btn primary done" id="navBtn" hidden target="_blank" rel="noopener">ナビ開始（Google マップ）</a><button class="photo" id="photoBtn" hidden aria-label="写真を撮る"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.6" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>写真</button><button class="primary done" id="doneBtn" hidden>任務完了</button><button class="primary done" id="carBtn" hidden>車にもどった</button></div>
   <input type="file" accept="image/*" capture="environment" id="photoIn" hidden>
 </section>
 
 <div class="lock" id="lock" hidden><div class="in">
   <svg viewBox="0 0 200 200" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="5"><g class="ring"><circle cx="100" cy="100" r="78" stroke-dasharray="60 22"/></g><circle cx="100" cy="100" r="40"/><path d="M100 4v40M100 156v40M4 100h40M156 100h40"/></g><circle cx="100" cy="100" r="6" fill="currentColor"/></svg>
   <span class="t">目標確保</span><span class="n" id="lockName"></span></div></div>
+<div class="nameBox" id="nameBox" hidden role="dialog" aria-label="司令の名前"><div class="in">
+  <label for="nameIn">司令の名前（同乗者が書く）</label>
+  <input id="nameIn" maxlength="12" autocomplete="off">
+  <button class="primary" id="nameOk">記録する</button></div></div>
 <div class="art" id="art" hidden><div id="artBox"></div></div>
 <div class="film" id="film" hidden role="dialog" aria-label="作戦映像">
   <div class="hd"><span id="filmTtl"></span><button id="filmClose">閉じる</button></div>
@@ -317,6 +327,8 @@ details summary{cursor:pointer;font-weight:900;color:var(--sub);min-height:40px;
         <button id="spPlayNow" hidden>いまの BGM を Spotify で流す</button>
       </div>
     </div>
+    <button id="navMenu">ナビ開始（Google マップ）</button>
+    <button id="navAlt" hidden>雪の日の道でナビ（江津・浜田道まわり）</button>
     <button id="filmBtn">作戦映像をもう一度見る</button>
     <button id="reportBtn">作戦報告書（写真と任務）</button>
     <div class="card" id="gourmetCard" hidden>
@@ -355,6 +367,7 @@ details summary{cursor:pointer;font-weight:900;color:var(--sub);min-height:40px;
     <div class="sheetHead"><span>出発前の準備点検</span><button id="readyClose">閉じる</button></div>
     <p class="small">家の Wi-Fi につないで、前の晩までに開いてください。声と映像をスマホに保存するので、山の中で電波がなくても動きます。</p>
     <ul class="ready" id="readyList"></ul>
+    <button id="readyCopy" data-act="copy">結果をコピー（Claude に送る用）</button>
   </div>
 </div>
 <div class="sheet" id="report" hidden>

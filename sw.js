@@ -1,5 +1,5 @@
 // Offline cache for the app shell (mountain areas may have weak signal).
-const CACHE = 'mythops-v16';
+const CACHE = 'mythops-v17';
 const VOICE_CACHE = 'mythops-voice';
 const FILM_CACHE = 'mythops-film'; // 作戦映像（ページが保存する）
 const SHELL = ['./', './index.html', './story.js', './route.js', './site.js', './plot.js', './bossgl.js', './boss.png', './app.js', './fx.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-180.png'];
@@ -7,7 +7,7 @@ const SHELL = ['./', './index.html', './story.js', './route.js', './site.js', '.
 // Only the app itself is saved at install. The recorded voice (about 1,100 files) is saved
 // afterwards by the page, a few at a time, so one dropped file never blocks the update.
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL.concat(['./voice/index.json', './voice/env.json', './voice/silence.m4a']).map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL.concat(['./voice/index.json', './voice/env.json', './voice/silence.m4a', './film/index.json']).map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {

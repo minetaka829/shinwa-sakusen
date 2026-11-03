@@ -109,6 +109,17 @@
           st(function () { location.reload(); }, 300);
           return;
         }
+        var nb = document.getElementById('nameBox'); // 名前は同乗者が書く
+        if (nb && !nb.hidden) { document.getElementById('nameIn').value = 'ココノ'; log({ k: 'chaos', t: 'name typed' }); document.getElementById('nameOk').click(); }
+        // 「車にもどった」: 走り出す前に押す（chaos は半分の確率で押し忘れて、700m先で流れる方を試す）
+        var cb = document.getElementById('carBtn');
+        if (cb && !cb.hidden && !window._carSeen) {
+          window._carSeen = 1;
+          if (scenario === 'chaos' && rnd() < 0.5) log({ k: 'chaos', t: 'forgot car button' });
+          else { window._carPress = 1; }
+        }
+        if (window._carPress) { if (!speaking && !queue.length) { window._carPress = 0; window._carHold = 1; log({ k: 'chaos', t: 'car button' }); cb.click(); } return; }
+        if (window._carHold) { if (speaking || queue.length) return; window._carHold = 0; } // 話し終わるまで止まった車の中で聞く
         if (scenario === 'chaos' && rnd() < 0.0004) { log({ k: 'chaos', t: 'voice off/on' }); document.getElementById('voice').click(); document.getElementById('voice').click(); }
         if (scenario === 'nogps') { // 位置なし: 着いたら押す、話し終えたら完了を押す
           // 着くのは Google の所要時間がたってから（その間、道中の話は時間で流れる）
@@ -126,7 +137,7 @@
           }
           tick(); return;
         }
-        if (scenario === 'skip' && day === 2 && idx === 5 && !window._skipped && ST.done['2-4']) { window._skipped = 1; log({ k: 'chaos', t: 'skip at izumo' }); document.getElementById('skip').click(); }
+        if (scenario === 'skip' && day === 2 && idx === 4 && !window._skipped && ST.done['2-3']) { window._skipped = 1; log({ k: 'chaos', t: 'skip at iwami' }); document.getElementById('skip').click(); }
         if (phase === 'end') { speed = 0; return; }
         var r = ROUTES[day][idx], k = day + '-' + idx;
         if (legKey !== k) { legKey = k; at = 0; resumeAt = null; log({ k: 'leg', t: M().n, km: r.km }); }

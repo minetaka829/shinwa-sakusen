@@ -14,6 +14,7 @@ function reply(boss,enemy,k){
 // random line, never the same twice in a row
 var lastPick={};
 function pick(a,k){ var i; do{ i=Math.floor(Math.random()*a.length); }while(a.length>1&&i===lastPick[k]); lastPick[k]=i; return a[i]; }
+function ymdNow(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
 function escapeHtml(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function load(){try{return JSON.parse(localStorage.getItem('mythops-v1')||'{}')||{};}catch(e){return {};}}
 var demoMode=false;
@@ -48,7 +49,9 @@ var BOSS='<defs><radialGradient id="halo" cx="50%" cy="45%" r="55%"><stop offset
 function boss(p){return BOSS.replace(/id="(\w+)"/g,'id="'+p+'$1"').replace(/url\(#(\w+)\)/g,'url(#'+p+'$1)');}
 $('boss').innerHTML=boss('a');
 // the drawn commander (bossgl.js); the simple figure stays only where WebGL is not available
-if(window.BossGL && BossGL.init($('bossCv'),$('bossFx'))) $('boss').setAttribute('hidden',''); else $('bossWrap').hidden=true;
+// if iOS resets the drawing, the simple figure stands in until it comes back
+function bossFallback(on){ if(on){ $('boss').removeAttribute('hidden'); $('bossWrap').hidden=true; } else { $('boss').setAttribute('hidden',''); $('bossWrap').hidden=false; } }
+if(window.BossGL && BossGL.init($('bossCv'),$('bossFx'),'boss.png',function(){ bossFallback(true); },function(){ bossFallback(false); })) $('boss').setAttribute('hidden',''); else $('bossWrap').hidden=true;
 
 /* ===================== VOICE =====================
    Every line is pre-recorded with VOICEVOX (voice/*.m4a, listed in voice/index.json:
@@ -108,7 +111,7 @@ function fitSub(){
   box.style.setProperty('--subFs',fs+'px');
   while(fs>15 && $('say').scrollHeight>box.clientHeight-30){ fs-=1; box.style.setProperty('--subFs',fs+'px'); }
 }
-function stopVoice(){ if(window.enemyScreen){ enemyScreen(false); hideArt(); } gen++; clearTimeout(gapTimer); clearTimeout(guard); queue=[]; pending={}; speaking=false; current=null; player.pause(); if(window.speechSynthesis)speechSynthesis.cancel(); talking(false); }
+function stopVoice(){ if(window.enemyScreen){ enemyScreen(false); hideArt(); } $('resumeVoice').hidden=true; ourPause=!player.paused; gen++; clearTimeout(gapTimer); clearTimeout(guard); queue=[]; pending={}; speaking=false; current=null; player.pause(); if(window.speechSynthesis)speechSynthesis.cancel(); talking(false); }
 /* A story beat is marked as said only when its last line starts playing, so a beat cut off
    (app closed, day changed) comes back the next time its moment comes. */
 var pending={};
@@ -157,7 +160,9 @@ function quiet(items){ return items.map(function(it){ return (it.who==='enemy')?
 // a story part: string or {t, ask, ans, wait} (silence after the question so people can answer)
 function part(p,who){
   if(typeof p==='string') return lines(p,who);
-  var a=lines(p.t,who);
+  // light: said instead of t while it is still light (more than 30 minutes before sunset)
+  var n=new Date(), t=(p.snow && ST.snow===day)?p.snow:(p.light && n.getHours()+n.getMinutes()/60<sunHour()-0.5)?p.light:p.t;
+  var a=lines(t,who);
   if(p.ask) a=a.concat(lines(p.ask,who),[{pause:p.wait||6}]);
   return a.concat(lines(p.ans,who));
 }
@@ -177,6 +182,7 @@ function nextItem(){
   if(it.fx==='unmute'){ ST.mute=null; save(); if(window.BossGL) BossGL.enter(); return nextItem(); }
   if(/^art:/.test(it.fx)){ if(window.showArt) showArt(it.fx.slice(4)); return nextItem(); }
   if(it.fx==='artoff'){ if(window.hideArt) hideArt(); return nextItem(); }
+  if(it.fx==='name'){ var g0=gen; openName(function(){ if(g0===gen) nextItem(); }); return; } // the talk waits until the name is written (or 2 minutes)
   if(!it.t && !it.sfx && !it.pause && !it.music) return nextItem();
   if(it.quiet && muted()) return nextItem(); // chatter while the commander is gone is skipped (decided now, not when queued)
   if(it.near && pos && hav(pos,it.near[0])>it.near[1]) return nextItem(); // the place is long passed
@@ -185,7 +191,7 @@ function nextItem(){
   // never wait forever: iOS may stop a sound without telling us (calls, other apps, the screen)
   function f0(){ return !it.pause && !it.music && voiceOn && !!fileOf(it); }
   function watch(ms){ clearTimeout(guard); guard=setTimeout(function(){ if(my===gen) after(); },ms); }
-  current={my:my, after:after, kind:(f0()?'audio':'other')};
+  current={my:my, after:after, kind:(f0()?'audio':'other'), watch:watch};
   if(it.pause){ talking(false); gapTimer=setTimeout(function(){ if(my===gen) nextItem(); },voiceOn?it.pause*1000:600); return; }
   if(it.music){ cue(it.music); gapTimer=setTimeout(function(){ if(my===gen) nextItem(); },(it.hold||0)*1000); return; }
   if(!it.sfx){ setWho(it.who); $('say').textContent=it.t; fitSub(); }
@@ -199,14 +205,16 @@ function nextItem(){
       player.onloadedmetadata=function(){ if(my===gen && isFinite(player.duration)) watch(player.duration*1000+2500); };
       watch(it.sfx?5000:6000+it.t.length*300);
       player.src=url; if(!it.sfx) talking(it.who==='boss'); curFile=it.sfx||it.who!=='boss'?null:f;
-      player.play().catch(function(){ if(my===gen){ clearTimeout(guard); silent(); } });
+      player.play().catch(function(e){ if(my!==gen) return; clearTimeout(guard); if(e&&e.name==='NotAllowedError') holdVoice(); else silent(); });
       if(queue[0]&&fileOf(queue[0])) clip(fileOf(queue[0]));
-    }).catch(function(){ if(my===gen) silent(); });
-  } else if(!it.sfx && window.speechSynthesis){
+    }).catch(function(){ if(my!==gen) return; if(!it.sfx && window.speechSynthesis) speakTTS(); else silent(); });
+  } else if(!it.sfx && window.speechSynthesis) speakTTS();
+  else silent();
+  function speakTTS(){
     var u=new SpeechSynthesisUtterance(reading(it.t));
     u.lang='ja-JP'; if(jaVoice) u.voice=jaVoice; u.rate=1.02;
     u.onend=u.onerror=after; watch(5000+it.t.length*300); talking(true); speechSynthesis.speak(u);
-  } else silent();
+  }
 }
 function setWho(w){ var e=w==='enemy'; $('sub').classList.toggle('enemy',e); $('who').textContent=e?ENEMY_NAME:'ヤマタ司令'; $('bossBox').classList.toggle('jammed',e); if(window.enemyScreen) enemyScreen(e); }
 window.addEventListener('resize',fitSub);
@@ -222,9 +230,23 @@ function keepAwake(){
 document.addEventListener('visibilitychange',function(){
   if(document.visibilityState!=='visible') return;
   if(running) keepAwake();
-  // back from another app: a sound iOS stopped meanwhile is skipped, so the talk goes on
-  if(speaking && current && current.kind==='audio' && player.paused) current.after();
+  // back from another app: the line iOS stopped meanwhile goes on from where it was (a tap, if iOS asks for one)
+  if(speaking && current && current.kind==='audio' && player.paused && !player.ended) resumeVoice();
+  // the position may have stopped while away (Google Maps, a long tunnel)
+  if(running && !demo) gpsCheck(true);
 });
+/* iOS stops the voice for a call or Siri without telling the page. The line waits (a tap brings it back), so no part of the story is lost */
+var ourPause=false;
+function holdVoice(){ clearTimeout(guard); talking(false); $('resumeVoice').hidden=false; }
+function resumeVoice(){
+  player.play().then(function(){ $('resumeVoice').hidden=true; if(current&&current.watch&&isFinite(player.duration)) current.watch((player.duration-player.currentTime)*1000+2500); talking(true); })
+    .catch(function(){ holdVoice(); });
+}
+player.addEventListener('pause',function(){
+  if(ourPause||player.ended){ ourPause=false; return; }
+  if(speaking && current && current.kind==='audio' && voiceOn) holdVoice();
+});
+$('resumeVoice').onclick=function(){ resumeVoice(); };
 
 /* ===================== STATE MACHINE ===================== */
 var day=0, idx=0, running=false, demo=false;
@@ -273,7 +295,9 @@ function tick(){
     else leftSince=null;
   }
   // just left the previous mission (about 700 m away): the story may continue on the road
-  if(phase==='drive' && idx>0 && hav(pos,D().m[idx-1].ll)>700) play(departItems(idx-1),{queue:true});
+  var cw=ST.carWait;
+  if(phase==='drive' && cw && cw.day===day && hav(pos,D().m[cw.i].ll)>700) fireCar(); // drove off without pressing 「車にもどった」
+  else if(phase==='drive' && idx>0 && hav(pos,D().m[idx-1].ll)>700) play(departItems(idx-1),{queue:true});
   if(phase==='drive'){ checkPoints(d<apR); legTick(d/1000); }
   updateDist();
 }
@@ -314,7 +338,8 @@ function arrive(){
   $('doneBtn').textContent=m.final?'本日の作戦 終了':'任務完了';
   if(window.lockOn) lockOn(m.n);
   // whatever the road should have told first (no GPS, or "arrived" pressed early) comes before the arrival
-  var own=replaced('arrive',idx)?[]:lines(m.os+(m.final?LINES.lastMission:LINES.mission)+m.ms);
+  var os=(m.osSkip && (ST.skipped||{})[m.osSkip[0]])?m.osSkip[1]:m.os;
+  var own=replaced('arrive',idx)?[]:lines(os+(m.final?LINES.lastMission:LINES.mission)+m.ms);
   play(departItems(idx-1).concat(approachItems(true), once('ar'+day+'-'+idx,[{sfx:'radio'}].concat(own, storyItems('arrive',idx), pose&&!muted()?lines(LINES.pose+pose):[]))),{queue:true});
 }
 function complete(auto){
@@ -324,7 +349,8 @@ function complete(auto){
   ST.done[key(idx)]=1; save();
   var st=$('stamp'); st.hidden=false; setTimeout(function(){st.hidden=true;},1500);
   if(window.BossGL){ BossGL.act('bow'); setTimeout(function(){ BossGL.act('wag'); },1900); }
-  var done=idx, extra=storyItems('after',done).concat(pos?[]:departItems(done));
+  var done=idx, car=!!M().carBeat, extra=storyItems('after',done).concat(pos||car?[]:departItems(done));
+  if(car){ ST.carWait={day:day,i:done}; save(); }
   if(M().final){ phase='end'; renderProgress(); recap(extra); return; }
   var next=idx+1;
   setTimeout(function(){
@@ -347,24 +373,25 @@ function replaced(kind,i){ return [SCENE,SECRET,ENEMY].some(function(g){ return 
 // the commander is off the air (mute:true ... unmute:true): no chatter, guides or detours meanwhile
 function muted(){ return ST.mute===day; }
 // what the story says at a moment: kind 'approach' or 'after', for mission i (each said once)
+var skipMode=false; // set while the beats of a skipped mission are gathered: items that need the place (onsite) stay out
 function storyItems(kind,i){
   var out=[], themed=false;
   // the enemy's theme plays once, before the first time the enemy actually speaks in this moment
   function theme(x){ if(themed||x.noTheme) return [{sfx:'enemy'}]; themed=true; return [{music:'enemy',hold:7},{sfx:'enemy'}]; }
   [['s',SCENE],['k',SECRET]].forEach(function(g){
     (g[1][day]||[]).forEach(function(x,j){
-      if(x[kind]!==i) return;
-      var body=once(g[0]+day+'-'+j,[].concat(x.mute?[{fx:'mute'}]:[], x.unmute?[{fx:'unmute'}]:[], x.art?[{fx:'art:'+x.art}]:[], part(x,x.who), x.art?[{fx:'artoff'}]:[], x.who==='enemy'?[{sfx:'radio'}]:[], x.music?[{music:x.music}]:[]));
+      if(x[kind]!==i || (skipMode && x.onsite)) return;
+      var body=once(g[0]+day+'-'+j,[].concat(x.mute?[{fx:'mute'}]:[], x.unmute?[{fx:'unmute'}]:[], x.art?[{fx:'art:'+x.art}]:[], part(x,x.who), x.art?[{fx:'artoff'}]:[], x.who==='enemy'?[{sfx:'radio'}]:[], x.music?[{music:x.music}]:[], x.name?[{fx:'name'}]:[]));
       if(body.length) out=out.concat(x.who==='enemy'?theme(x):[], body);
     });
   });
   (ENEMY[day]||[]).forEach(function(e,j){
-    if(e[kind]!==i) return;
+    if(e[kind]!==i || (skipMode && e.onsite)) return;
     var g=[].concat(e.mute?[{fx:'mute'}]:[], e.unmute?[{fx:'unmute'}]:[], lines(e.t,'enemy'),[{sfx:'radio'}],lines(e.reply));
     var prev='boss';
     (e.more||[]).forEach(function(m){
       if(m.who!==prev) g.push({sfx:m.who==='enemy'?'enemy':'radio'});
-      g=g.concat(part(m,m.who)); prev=m.who;
+      g=g.concat(part(m,m.who), m.name?[{fx:'name'}]:[]); prev=m.who;
     });
     if(e.music) g.push({music:e.music});
     var body=once('e'+day+'-'+j,g);
@@ -390,6 +417,13 @@ function recapText(d){
     return LINES.recapHead+LINES.recapKm(km)+LINES.recapDone(Math.min(n,12))+LINES.recapPhoto(np)+(n>=ms.length?LINES.praiseAll:LINES.praise)+[].concat(r.secret||[]).join('')+(r.next||'');
   });
 }
+// the night's report as items; with RECAP[d].art the picture is up while the secret part is told
+function recapItems(d,t){
+  var r=RECAP[d]||{}, sec=[].concat(r.secret||[]).join('');
+  if(!r.art || !sec || t.indexOf(sec)<0) return lines(t);
+  var i=t.indexOf(sec);
+  return lines(t.slice(0,i)).concat([{fx:'art:'+r.art}], lines(sec), [{fx:'artoff'}], lines(t.slice(i+sec.length)));
+}
 // the night's report: right away, or (a day that ends at a restaurant) with a button at the inn
 function showRecapBtn(){ if(isHeard('recap'+day)) return; $('doneBtn').hidden=false; $('doneBtn').textContent='今夜の報告を聞く'; }
 function recap(extra,atInn){
@@ -398,8 +432,8 @@ function recap(extra,atInn){
       play([{sfx:'fanfare'}].concat(once('af'+day+'-'+idx,extra), isHeard('recap'+day)?[]:lines(LINES.recapLater)),{queue:true});
       showRecapBtn(); return;
     }
-    play([{sfx:'fanfare'}].concat(once('af'+day+'-'+idx,extra), once('recap'+day,lines(t))),{queue:true});
-    if(day===2) setTimeout(function(){ $('endBtn').hidden=false; },500);
+    play([{sfx:'fanfare'}].concat(once('af'+day+'-'+idx,extra), once('recap'+day,recapItems(day,t))),{queue:true});
+    if(day===DAYS.length-1) setTimeout(function(){ $('endBtn').hidden=false; $('doneBtn').hidden=false; $('doneBtn').textContent='エンディングを見る'; endReady=true; },500);
   });
 }
 
@@ -408,6 +442,7 @@ var watchId=null, lastFix=null, driveSince=null, stopSince=null;
 function onFix(p){
   var c=[p.coords.latitude,p.coords.longitude], t=p.timestamp||Date.now(), acc=p.coords.accuracy||0;
   var sp=p.coords.speed;
+  if(sp!=null && sp<0) sp=null;
   if((sp==null||isNaN(sp)) && lastFix){var dt=(t-lastFix.t)/1000; sp=dt>0?hav(lastFix.c,c)/dt:0;}
   if(lastFix && acc<60){ var seg=hav(lastFix.c,c); if(seg<3000){ ST.km[day]=(ST.km[day]||0)+seg; } }
   chip('cGps','GPS ±'+Math.round(acc)+'m',acc<=200);
@@ -417,11 +452,25 @@ function onFix(p){
   trackDriving(t);
   tick();
 }
-function onGeoErr(e){ chip('cGps','GPS 不可',false); if(e.code===1) say(LINES.noGeo); }
+function onGeoErr(e){ chip('cGps','GPS 不可',false); if(e.code===1 && !onGeoErr.told){ onGeoErr.told=1; say(LINES.noGeo,{queue:true}); } }
 function startGps(){
   if(!('geolocation' in navigator)){onGeoErr({code:0});return;}
+  if(watchId!=null) navigator.geolocation.clearWatch(watchId);
   watchId=navigator.geolocation.watchPosition(onFix,onGeoErr,{enableHighAccuracy:true,maximumAge:2000,timeout:20000});
+  gpsStarted=Date.now();
 }
+// iOS may stop sending positions without an error (after Google Maps, in a long tunnel): start again when they stop coming
+var gpsStarted=0;
+function gpsCheck(now){
+  if(!running||demo||watchId==null) return;
+  var t=lastFix?lastFix.t:gpsStarted;
+  if(Date.now()-t>(now?20000:90000) && Date.now()-gpsStarted>20000) startGps();
+}
+setInterval(function(){ gpsCheck(false); },30000);
+// the last stop of the day (the inn, dinner, home) is done by itself 30 minutes after arriving, in case its button is forgotten
+setInterval(function(){
+  if(running && phase==='onsite' && M().final && ST.at && Date.now()-(ST.at[key(idx)]||Date.now())>30*60000) complete(true);
+},60000);
 // continuous driving time (a stop of 10 minutes resets it)
 function trackDriving(t){
   if(speed>5){ stopSince=null; if(!driveSince) driveSince=t;
@@ -613,7 +662,7 @@ function openReport(){
     }).join('');
     var un=ps.filter(function(p){ return p.day<0; });
     if(un.length) html+='<section><h3>未分類（撮った場所と時刻が分からなかった写真）</h3><ul><li><span class="mk"></span><span class="ph">'+un.map(function(p){return '<img alt="" src="'+photoUrl(reportUrls,p.blob)+'">';}).join('')+'</span></li></ul></section>';
-    $('reportBody').innerHTML=html; $('report').hidden=false;
+    $('reportBody').innerHTML=html; $('report').hidden=false; prepareReport();
   });
 }
 // one tall image per trip: title, then every mission with its first photo
@@ -633,18 +682,19 @@ function reportImage(){
         if(r.img){ var s=Math.min(960/r.img.width,460/r.img.height), w=r.img.width*s, h=r.img.height*s; g.drawImage(r.img,60,y,w,h); y+=480; }
         else y+=10;
       });
-      g.fillStyle='#A9B4C4'; g.font='700 28px sans-serif'; g.fillText('ヤマタ司令　承認',W-360,H-60);
+      g.fillStyle='#A9B4C4'; g.font='700 28px sans-serif'; var sg=ST.bossName?'司令 '+ST.bossName+'　承認':'ヤマタ司令　承認'; g.textAlign='right'; g.fillText(sg,W-60,H-60); g.textAlign='left';
       return new Promise(function(ok){ c.toBlob(ok,'image/jpeg',0.88); });
     });
   });
 }
+// the image is made when the report opens, so sharing happens right on the tap (iOS refuses a share that comes seconds later)
+var reportBlob=null;
+function prepareReport(){ reportBlob=null; $('reportSave').disabled=true; $('reportSave').textContent='画像を作っています…'; reportImage().then(function(b){ reportBlob=b; $('reportSave').disabled=!b; $('reportSave').textContent='画像にして保存・共有'; }); }
 $('reportSave').onclick=function(){
-  var b=this; b.disabled=true; b.textContent='作っています…';
-  reportImage().then(function(blob){
-    var f=new File([blob],'作戦報告書.jpg',{type:'image/jpeg'});
-    if(navigator.canShare&&navigator.canShare({files:[f]})) return navigator.share({files:[f],title:'作戦報告書'}).catch(function(){});
-    var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='作戦報告書.jpg'; a.click();
-  }).then(function(){ b.disabled=false; b.textContent='画像にして保存・共有'; });
+  if(!reportBlob) return;
+  var f=new File([reportBlob],'作戦報告書.jpg',{type:'image/jpeg'}), b=this;
+  if(navigator.canShare&&navigator.canShare({files:[f]})) navigator.share({files:[f],title:'作戦報告書'}).catch(function(e){ if(e&&e.name!=='AbortError') b.textContent='もう一度押してください'; });
+  else { var a=document.createElement('a'); a.href=URL.createObjectURL(reportBlob); a.download='作戦報告書.jpg'; a.click(); }
 };
 $('reportBtn').onclick=openReport;
 // a printable report (iPhone: print → save as PDF)
@@ -664,18 +714,23 @@ $('reportPrint').onclick=function(){
       .then(function(){ window.print(); setTimeout(function(){ freeUrls(urls); $('printArea').innerHTML=''; },60000); });
   });
 };
+$('navMenu').onclick=function(){ $('menu').hidden=true; openNav(day,idx); };
+$('navAlt').onclick=function(){ $('menu').hidden=true; ST.snow=day; save(); openNav(day,idx,true); };
+$('navBtn').onclick=function(e){ e.preventDefault(); openNav(day,idx); };
+$('filmNav').onclick=function(e){ e.preventDefault(); openNav(day,idx); };
 $('filmBtn').onclick=function(){ $('menu').hidden=true; replayFilm(); };
 $('filmClose').onclick=function(){ closeFilm(); };
 $('reportClose').onclick=function(){ $('report').hidden=true; freeUrls(reportUrls); };
 
-var endTimer=null;
+var endReady=false, endTimer=null;
 function openEnding(){
   allPhotos().then(function(ps){
     $('ending').hidden=false; $('menu').hidden=true;
     var i=0, show=function(){
-      if(!ps.length){ $('endCap').textContent='作戦名：神話の国　完'; return; }
+      var nm=ST.bossName?'　司令 '+ST.bossName:'';
+      if(!ps.length){ $('endCap').textContent='作戦名：神話の国　完'+nm; return; }
       var p=ps[i%ps.length]; $('endImg').style.opacity=0;
-      setTimeout(function(){ var old=$('endImg').src; $('endImg').src=URL.createObjectURL(p.blob); if(old&&old.indexOf('blob:')===0) URL.revokeObjectURL(old); $('endImg').style.opacity=1; $('endCap').textContent=p.name; },600);
+      setTimeout(function(){ var old=$('endImg').src; $('endImg').src=URL.createObjectURL(p.blob); if(old&&old.indexOf('blob:')===0) URL.revokeObjectURL(old); $('endImg').style.opacity=1; $('endCap').textContent=p.name+nm; },600);
       i++;
     };
     show(); clearInterval(endTimer); endTimer=setInterval(show,4500); if(window.endingFilm) endingFilm();
@@ -683,6 +738,17 @@ function openEnding(){
   });
 }
 $('endBtn').onclick=openEnding;
+/* the commander's name, typed by the passenger (the recorded voice never says it) */
+var nameDone=null, nameTimer=null;
+function openName(cb){ nameDone=cb||null; clearTimeout(nameTimer); nameTimer=setTimeout(closeName,120000); $('nameIn').value=ST.bossName||''; $('nameBox').hidden=false; }
+function closeName(){ clearTimeout(nameTimer); $('nameBox').hidden=true; var f=nameDone; nameDone=null; if(f) f(); }
+$('nameOk').onclick=function(){ var v=$('nameIn').value.trim(); if(v){ ST.bossName=v; save(); } closeName(); };
+/* the beat that should play in the stopped car (carBeat): the passenger presses this before the engine starts */
+function carCheck(){ var w=ST.carWait; $('carBtn').hidden=!(running && w && w.day===day && !isHeard('dep'+w.day+'-'+w.i)); }
+var afterCar=null; // what a skip right after a carBeat site had to say: it waits for the climax (the commander is still away until then)
+function fireCar(){ var w=ST.carWait; $('carBtn').hidden=true; if(!w) return; ST.carWait=null; save(); play(departItems(w.i),{queue:true}); if(afterCar){ var a=afterCar; afterCar=null; play(a,{queue:true}); } }
+$('carBtn').onclick=fireCar;
+setInterval(carCheck,2000);
 $('endClose').onclick=function(){ clearInterval(endTimer); $('ending').hidden=true; var v=$('endV'); v.pause(); if(v.src){ URL.revokeObjectURL(v.src); v.removeAttribute('src'); } v.hidden=true; };
 
 /* ===================== GOURMET ===================== */
@@ -829,8 +895,10 @@ function unlockAudio(){
 $('mReal').onclick=function(){mode='real';$('mReal').setAttribute('aria-pressed','true');$('mDemo').setAttribute('aria-pressed','false');$('modeNote').textContent='位置情報で自動的に進みます。旅行の当日に使ってください（家で試すときは「デモ走行」で）。';};
 $('mDemo').onclick=function(){mode='demo';$('mDemo').setAttribute('aria-pressed','true');$('mReal').setAttribute('aria-pressed','false');$('modeNote').textContent='家で試す用です。車が高速で自動走行し、各地点で止まって案内します。';};
 (function initStart(){
-  // the dates are not fixed: start on the first day that is not finished yet
-  var d=0; while(d<DAYS.length-1 && ST.done[d+'-'+(DAYS[d].m.length-1)]) d++;
+  // the dates are not fixed: start on the first day that is not finished yet.
+  // A day begun on an earlier date counts as over (the last button at the inn may have been forgotten)
+  var d=0, today=ymdNow(), st=ST.started||{};
+  while(d<DAYS.length-1 && (ST.done[d+'-'+(DAYS[d].m.length-1)] || (st[d] && st[d]<today))) d++;
   $('daysel').value=String(d);
   if(ST.done['2-'+(DAYS[2].m.length-1)]) $('endBtn').hidden=false;
 })();
@@ -847,7 +915,7 @@ $('briefBtn').onclick=function(){
 $('go').onclick=function(){
   demo=(mode==='demo');
   if(demoMode&&!demo){ demoMode=false; ST=fresh(load()); }
-  day=+$('daysel').value; ST.day=day; save();
+  day=+$('daysel').value; ST.day=day; if(!demo){ ST.started=ST.started||{}; ST.started[day]=ymdNow(); } save();
   if(demo){ demoMode=true; ST=fresh({day:day}); }
   stopVoice(); clearInterval(demoTimer); if(watchId!=null) navigator.geolocation.clearWatch(watchId); watchId=null;
   phase='drive'; pos=null; lastFix=null; leg=null; curCue=null;
@@ -861,12 +929,12 @@ $('go').onclick=function(){
   var first=!isHeard('open'+day), finished=ST.done[key(D().m.length-1)];
   // last night's report, if it was never heard (the button at the inn was missed)
   if(first && day>0 && ST.done[(day-1)+'-'+(DAYS[day-1].m.length-1)] && !isHeard('recap'+(day-1))){
-    var pd=day-1; recapText(pd).then(function(t){ play([{sfx:'radio'}].concat(once('recap'+pd,lines(t))),{queue:true}); });
+    var pd=day-1; recapText(pd).then(function(t){ play([{sfx:'radio'}].concat(once('recap'+pd,recapItems(pd,t))),{queue:true}); });
   }
   // the day's opening is said once; reopening later just carries on
   play(once('open'+day,[{sfx:'radio'}].concat(lines(D().open), new Date().getHours()<10?lines(timeLine('morning')):[])),{queue:true});
   // story beats that a closed app cut off (after a mission, or of a skipped one) come back now
-  for(var j=0;j<D().m.length;j++){ if(ST.done[key(j)]) play(storyItems('approach',j).concat(storyItems('arrive',j),storyItems('after',j)),{queue:true}); }
+  for(var j=0;j<D().m.length;j++){ if(!ST.done[key(j)]) continue; var sk=!!(ST.skipped||{})[key(j)]; skipMode=sk; var b=storyItems('approach',j).concat(storyItems('arrive',j),storyItems('after',j),sk?storyItems('skipped',j):[]); skipMode=false; play(b,{queue:true}); }
   if(window.applySky) applySky();
   if(window.BossGL){ if(muted()) BossGL.leave(); else BossGL.enter(); }
   if(finished){ phase='end'; showRecapBtn(); }
@@ -886,12 +954,17 @@ $('skip').onclick=function(){
   $('menu').hidden=true;
   if(M().final){ arrive(); return; }
   // the story beats of the skipped mission still play, so the plot never loses a step
-  var n=idx+1, beats=departItems(idx-1).concat(legRest(true), storyItems('approach',idx), storyItems('arrive',idx), storyItems('after',idx), departItems(idx));
+  skipMode=true;
+  var w=ST.carWait, held=w && w.day===day && w.i===idx-1;
+  var n=idx+1, beats=(held?[]:departItems(idx-1)).concat(legRest(true), storyItems('approach',idx), storyItems('arrive',idx), storyItems('after',idx), storyItems('skipped',idx), departItems(idx));
+  skipMode=false;
   ST.done[key(idx)]=1; ST.skipped=ST.skipped||{}; ST.skipped[key(idx)]=1; save();
+  if(held){ afterCar=(afterCar||[]).concat(beats); beats=[]; }
   play(lines(LINES.skipTo(D().m[n].n)).concat(beats,[{music:'drive'}]),{queue:true}); setTarget(n,false);
 };
 $('doneBtn').onclick=function(){
   if(phase==='brief'){ stopVoice(); $('console').hidden=true; $('console').classList.remove('brief'); $('start').hidden=false; $('doneBtn').hidden=true; return; }
+  if(endReady){ $('doneBtn').hidden=true; openEnding(); return; }
   if(phase==='end'){ // the night's report, at the inn
     $('doneBtn').hidden=true;
     recap([],true);
@@ -899,7 +972,7 @@ $('doneBtn').onclick=function(){
   }
   complete(false);
 };
-$('menuBtn').onclick=function(){ this.classList.remove('flash'); renderSpotify(); $('menu').hidden=false; };
+$('menuBtn').onclick=function(){ this.classList.remove('flash'); renderSpotify(); $('navAlt').hidden=!(running && (NAV[day+'-'+idx]||{}).alt); $('menu').hidden=false; };
 $('menuClose').onclick=function(){ $('menu').hidden=true; };
 $('menu').onclick=function(e){ if(e.target===this) this.hidden=true; };
 $('talkTgl').onclick=function(){ talkOn=!talkOn; this.setAttribute('aria-pressed',String(talkOn)); this.textContent=talkOn?'道中トーク ON':'道中トーク OFF'; };

@@ -132,12 +132,29 @@ var BossGL=(function(){
     x=384+(x-384)*(1+0.004*br+sq*0.6); y=700+(y-700)*(1+0.011*br-sq)+(A.jy||0);
     return [x,y];
   }
-  var BIND=null, HB=null;
+  var BIND=null, HB=null, drawn=[]; // drawn: この1秒に描いたコマ（なめらかさの確認用）
   function shader(type,src){ var s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s); return s; }
-  function init(canvas,overlay,src){
-    cv=canvas; fx=overlay; g2=fx.getContext('2d');
-    gl=cv.getContext('webgl',{alpha:true,premultipliedAlpha:true,antialias:true,preserveDrawingBuffer:true});
+  var POS=new Float32Array((N+1)*(N+1)*2), lost=false, onLost=null, onBack=null;
+  function init(canvas,overlay,src,lostCb,backCb){
+    cv=canvas; fx=overlay; g2=fx.getContext('2d'); onLost=lostCb; onBack=backCb;
+    gl=cv.getContext('webgl',{alpha:true,premultipliedAlpha:true,antialias:true});
     if(!gl) return false;
+    // iOS は、ほかのアプリでメモリが足りなくなると描画をリセットすることがある。そのときは作り直す
+    cv.addEventListener('webglcontextlost',function(e){ e.preventDefault(); lost=true; ok=false; if(onLost) onLost(); });
+    cv.addEventListener('webglcontextrestored',function(){ lost=false; setupGL(); if(img&&img.complete) setupTexture(); ok=true; if(onBack) onBack(); });
+    setupGL();
+    img=new Image();
+    img.onload=function(){
+      setupTexture();
+      // まぶたの色は、目のすぐ横の肌の色をそのまま使う
+      try{ var c=document.createElement('canvas'); c.width=c.height=S; var x=c.getContext('2d'); x.drawImage(img,0,0);
+        EYES.forEach(function(e,i){ var d=x.getImageData(e[0]-e[2]-3,e[1],1,1).data; skinAt[i]='rgb('+d[0]+','+d[1]+','+d[2]+')'; }); }catch(e){}
+      ok=true; requestAnimationFrame(frame);
+    };
+    img.src=src||'boss.png';
+    return true;
+  }
+  function setupGL(){
     prog=gl.createProgram();
     gl.attachShader(prog,shader(gl.VERTEX_SHADER,'attribute vec2 p;attribute vec2 u;varying vec2 v;void main(){v=u;gl_Position=vec4((p.x-'+C0[0]+'.0)/'+(CS/2)+'.0-1.0,1.0-(p.y-'+C0[1]+'.0)/'+(CS/2)+'.0,0,1);}'));
     gl.attachShader(prog,shader(gl.FRAGMENT_SHADER,'precision mediump float;varying vec2 v;uniform sampler2D tx;void main(){gl_FragColor=texture2D(tx,v);}'));
@@ -149,21 +166,15 @@ var BossGL=(function(){
     var lu=gl.getAttribLocation(prog,'u'); gl.enableVertexAttribArray(lu); gl.vertexAttribPointer(lu,2,gl.FLOAT,false,0,0);
     buf=gl.createBuffer();
     idx=gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,idx); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(ix),gl.STATIC_DRAW); nIdx=ix.length;
-    img=new Image();
-    img.onload=function(){
+    gl.bindBuffer(gl.ARRAY_BUFFER,buf); gl.bufferData(gl.ARRAY_BUFFER,POS.byteLength,gl.DYNAMIC_DRAW);
+  }
+  function setupTexture(){
       var tx=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,tx);
       gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,true);
       gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
       gl.enable(gl.BLEND); gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
-      // まぶたの色は、目のすぐ横の肌の色をそのまま使う
-      try{ var c=document.createElement('canvas'); c.width=c.height=S; var x=c.getContext('2d'); x.drawImage(img,0,0);
-        EYES.forEach(function(e,i){ var d=x.getImageData(e[0]-e[2]-3,e[1],1,1).data; skinAt[i]='rgb('+d[0]+','+d[1]+','+d[2]+')'; }); }catch(e){}
-      ok=true; requestAnimationFrame(frame);
-    };
-    img.src=src||'boss.png';
-    return true;
   }
   function size(){
     var r=cv.parentNode.getBoundingClientRect(), s=Math.max(10,Math.floor(Math.min(r.width,r.height))), dpr=Math.min(2,window.devicePixelRatio||1);
@@ -171,9 +182,13 @@ var BossGL=(function(){
   }
   function frame(now){
     requestAnimationFrame(frame);
-    if(!ok || document.hidden || !cv.offsetParent || now-last<33) return; // 30コマ／秒。見えていないときは描かない
-    last=now; size();
-    var t=(now-t0)/1000, talk=window.bossMouth?bossMouth():0, pos=[];
+    // 話している・動いているあいだは30コマ／秒、黙っているときは20、走行中で黙っているときは12（発熱と電池のため）。見えていないときは描かない
+    var talking=window.bossMouth&&bossMouth()>0.05, gap=talking||act||away!==awayTo?33:(window.moving&&moving()?80:50);
+    if(!ok || lost || document.hidden || !cv.offsetParent || now-last<gap) return;
+    var cover=document.getElementById('film'); if(cover&&!cover.hidden) return; // 作戦映像を全面に出している間
+    if(away===1&&awayTo===1){ cv.parentNode.style.transform='translate(140%,0)'; return; } // いなくなっている間
+    last=now; size(); drawn.push(now); while(drawn.length&&now-drawn[0]>1000) drawn.shift();
+    var t=(now-t0)/1000, talk=window.bossMouth?bossMouth():0;
     mouth+=(talk-mouth)*(talk>mouth?0.7:0.45); if(mouth<0.02) mouth=0; // 開くのは速く、閉じるのは少しゆっくり
     // ときどき（20〜45秒おき）大きく動く。話している間は、見回しと会釈だけ
     // 画面の外まで出る大きな動きは、黙っているときに1〜2分に1回
@@ -187,9 +202,9 @@ var BossGL=(function(){
     cur=A; pose(t,talk>0.05?1:0,A);
     if(!HB) HB=bind(HEADC[0],HEADC[1]);
     if(!BIND){ BIND=[]; for(var jj=0;jj<=N;jj++) for(var ii=0;ii<=N;ii++) BIND.push(bind(ii*S/N,jj*S/N)); }
-    for(var j=0,q=0;j<=N;j++) for(var i=0;i<=N;i++,q++){ var p=deform(i*S/N,j*S/N,t,A,BIND[q]); pos.push(p[0],p[1]); }
+    for(var j=0,q=0;j<=N;j++) for(var i=0;i<=N;i++,q++){ var p=deform(i*S/N,j*S/N,t,A,BIND[q]); POS[q*2]=p[0]; POS[q*2+1]=p[1]; }
     gl.viewport(0,0,cv.width,cv.height); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.bindBuffer(gl.ARRAY_BUFFER,buf); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(pos),gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER,buf); gl.bufferSubData(gl.ARRAY_BUFFER,0,POS);
     var lp=gl.getAttribLocation(prog,'p'); gl.enableVertexAttribArray(lp); gl.vertexAttribPointer(lp,2,gl.FLOAT,false,0,0);
     gl.drawElements(gl.TRIANGLES,nIdx,gl.UNSIGNED_SHORT,0);
     overlay(t,talk);
@@ -228,13 +243,13 @@ var BossGL=(function(){
     var A=name?ACTS[name].f(u):{}; t=t||0; cur=A; mouth=m||0; size(); pose(t,mouth>0.05?1:0,A);
     if(!HB) HB=bind(HEADC[0],HEADC[1]);
     if(!BIND){ BIND=[]; for(var jj=0;jj<=N;jj++) for(var ii=0;ii<=N;ii++) BIND.push(bind(ii*S/N,jj*S/N)); }
-    var pos=[]; for(var j=0,q=0;j<=N;j++) for(var i=0;i<=N;i++,q++){ var p=deform(i*S/N,j*S/N,t,A,BIND[q]); pos.push(p[0],p[1]); }
+    for(var j=0,q=0;j<=N;j++) for(var i=0;i<=N;i++,q++){ var p=deform(i*S/N,j*S/N,t,A,BIND[q]); POS[q*2]=p[0]; POS[q*2+1]=p[1]; }
     gl.viewport(0,0,cv.width,cv.height); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.bindBuffer(gl.ARRAY_BUFFER,buf); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(pos),gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER,buf); gl.bufferSubData(gl.ARRAY_BUFFER,0,POS);
     var lp=gl.getAttribLocation(prog,'p'); gl.enableVertexAttribArray(lp); gl.vertexAttribPointer(lp,2,gl.FLOAT,false,0,0);
     gl.drawElements(gl.TRIANGLES,nIdx,gl.UNSIGNED_SHORT,0);
     overlay(t,mouth);
     return {wx:A.wx||0, wy:A.wy||0, ws:A.ws||1};
   }
-  return {init:init, act:doAct, leave:leave, enter:enter, snap:snap, ready:function(){ return ok; }};
+  return {init:init, act:doAct, leave:leave, enter:enter, snap:snap, fps:function(){ return drawn.length; }, ready:function(){ return ok; }};
 })();

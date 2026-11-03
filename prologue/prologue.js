@@ -33,7 +33,7 @@ function say1(t,el,my){
   el.textContent=t;
   return new Promise(function(ok){
     var f=VOICE[t], done=false;
-    function fin(){ if(done) return; done=true; speaking=false; ok(my===gen); }
+    function fin(){ if(done) return; done=true; if(my===gen) speaking=false; ok(my===gen); }
     if(!f){ setTimeout(fin,900+t.length*160); return; }
     cur=f; speaking=true; player.src=PRE[f]||('../voice/'+f);
     player.onended=fin; player.onerror=fin;
@@ -100,6 +100,7 @@ function toOath(){ step('stOath'); $('oathText').textContent=PROLOGUE.oath; $('r
   F.addEventListener('pointerdown',function(e){ e.preventDefault(); held=true; t0=performance.now(); tick(); });
   ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ F.addEventListener(ev,function(){ if(!held) return; held=false; cancelAnimationFrame(raf); $('ring').style.setProperty('--p',0); }); });
   F.addEventListener('contextmenu',function(e){ e.preventDefault(); });
+  F.addEventListener('touchstart',function(e){ e.preventDefault(); },{passive:false}); // 長押しで虫眼鏡や文字選択が出ないように
 })();
 function sworn(){
   if(!P.no) P.no=100+Math.floor(Math.random()*900);
@@ -133,7 +134,7 @@ function makeCard(){
     g.restore(); g.strokeStyle='#F0B94A'; g.lineWidth=3; g.strokeRect(48,128,300,380);
     // 文字
     function lbl(t,y){ g.fillStyle='#A9B4C4'; g.font='900 18px '+F; g.fillText(t,400,y); }
-    lbl('氏名',160); g.fillStyle='#F1F3F6'; var n=P.name||''; g.font='900 '+(n.length>8?40:54)+'px '+F; g.fillText(n,400,222);
+    lbl('氏名',160); g.fillStyle='#F1F3F6'; var n=P.name||'', fs=54; g.font='900 '+fs+'px '+F; while(fs>24&&g.measureText(n).width>560){ fs-=2; g.font='900 '+fs+'px '+F; } g.fillText(n,400,222);
     lbl('所属',272); g.fillStyle='#F1F3F6'; g.font='900 26px '+F; g.fillText('別班　島根作戦部隊',400,308);
     lbl('エージェント番号',356); g.fillStyle='#F0B94A'; g.font='400 40px '+D; g.fillText('No. '+P.no,400,402);
     lbl('任命日',448); g.fillStyle='#F1F3F6'; g.font='900 26px '+F; g.fillText(ymd(P.appointed),400,484);
@@ -182,6 +183,7 @@ function home(speakNow){
 $('orderPlay').onclick=function(){ say(order().t); };
 $('againFilm').onclick=function(){ hush(); playFilm(function(){ home(false); }); };
 $('showCard').onclick=function(){ cardReturn=true; makeCard().then(function(){ step('stCard'); say(PROLOGUE.card); }); };
+$('howMain').onclick=function(){ alert('作戦アプリは、ホーム画面の「神話作戦」のアイコンから開いてください。\nまだホーム画面にない場合は、Safari で https://minetaka829.github.io/shinwa-sakusen/ を開き、共有メニューの「ホーム画面に追加」で置いてください。'); };
 $('changeDate').onclick=function(){ step('stDate'); $('dateIn').value=P.date||''; say(PROLOGUE.askDate); };
 
 /* ===================== はじめに ===================== */
