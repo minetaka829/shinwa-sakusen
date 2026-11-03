@@ -12,7 +12,8 @@ body{display:flex;flex-direction:column;height:100dvh;overflow:hidden;padding:ca
 h1{font-size:17px;margin:0 0 4px;color:var(--gold)}
 .stage{flex:1;min-height:0;position:relative;overflow:hidden;border-radius:16px;background:radial-gradient(120% 60% at 50% 38%,#1B2A40 0%,var(--bg) 70%)}
 .bossWrap{position:relative;width:100%;height:100%;display:grid;place-items:center;will-change:transform}
-.bossWrap canvas{grid-area:1/1}
+.bossWrap canvas{grid-area:1/1;position:relative}
+.bossWrap canvas+canvas{z-index:1} /* 口とまぶたは絵より上 */
 .say{min-height:3.2em;font-size:16px;font-weight:700;line-height:1.6;padding:8px 2px;color:var(--fg)}
 .btns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .btns button{min-height:46px;border-radius:12px;border:1.5px solid var(--line);background:var(--panel);color:var(--fg);font-size:14px;font-weight:700}
@@ -32,13 +33,14 @@ h1{font-size:17px;margin:0 0 4px;color:var(--gold)}
 <p class="small">声：VOICEVOX:波音リツ</p>
 <script src="bossgl.js"></script>
 <script>
-var player=new Audio(), env={}, idx={}, playing=false, file=null;
+var player=new Audio(), env={}, idx={}, playing=false, file=null, playStart=0;
+player.addEventListener('playing',function(){ playStart=performance.now(); });
 fetch('voice/env.json').then(function(r){return r.json();}).then(function(j){env=j;});
 fetch('voice/index.json').then(function(r){return r.json();}).then(function(j){idx=j.boss||{};});
 // bossgl.js が毎コマ読む「いまの口の開き」
 function bossMouth(){
   if(!playing||!file||player.paused) return 0;
-  var e=env[file], k=Math.floor(player.currentTime*25);
+  var pt=player.currentTime>0.05?player.currentTime:(performance.now()-playStart)/1000, e=env[file], k=Math.floor(pt*25);
   return e&&k<e.length?(+e[k])/9:0;
 }
 BossGL.init(document.getElementById('cv'),document.getElementById('fx'));

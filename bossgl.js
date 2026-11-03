@@ -5,8 +5,13 @@
    ・目: ときどきまばたき　・口: 声の大きさ（voice/env.json）に合わせて開く
    座標は boss.png（768×768）の画素。 */
 var BossGL=(function(){
-  var S=768, N=40, C0=[76,40], CS=640; // 絵のまわりの余白を切りつめて表示する範囲（左上と一辺）
-  var EYE=[289,189], MOUTH_L=[300,262], MOUTH_R=[352,255];
+  var S=768, N=72, C0=[76,40], CS=640; // 絵のまわりの余白を切りつめて表示する範囲（左上と一辺）
+  var EYE=[289,189];
+  // 口: 絵の口の線（左＝鼻先側から右＝口角）と、あごの付け根。話すとあごを付け根のまわりに下へ回して開く
+  var LIP=[[278,259],[292,263],[306,264],[322,262],[338,258],[352,254]], HINGE=[356,256], mouth=0;
+  function lipY(x){ for(var k=0;k<LIP.length-1;k++) if(x<=LIP[k+1][0]) return LIP[k][1]+(LIP[k+1][1]-LIP[k][1])*Math.max(0,(x-LIP[k][0])/(LIP[k+1][0]-LIP[k][0])); return LIP[LIP.length-1][1]; }
+  function jawW(x){ return sm(256,270,x)*(1-sm(346,360,x)); }
+  function jawAt(x,y,a){ var dx=x-HINGE[0], dy=y-HINGE[1], c=Math.cos(a), s=Math.sin(a); return [HINGE[0]+dx*c-dy*s, HINGE[1]+dx*s+dy*c]; }
   // 背骨: 首（とぐろの手前から頭のてっぺんまで）としっぽの先。この線に関節を並べて曲げる
   var NECK=[[300,500],[302,432],[330,372],[358,318],[352,262],[330,190]];
   var TAILJ=[[592,500],[568,445],[572,400],[588,352]];
@@ -100,6 +105,11 @@ var BossGL=(function(){
   // 1点をずらす（網目の点と、口・目の位置に同じだけ）
   function deform(x,y,t,A,b){
     if(b===undefined) b=bind(x,y);
+    // あご: 口の線より下、あご先までを、付け根のまわりに回す
+    if(mouth>0.02 && x>250 && x<366 && y>245 && y<322){
+      var w=sm(lipY(x)-1,lipY(x)+5,y)*(1-sm(294,320,y))*jawW(x);
+      if(w>0){ var q=jawAt(x,y,-0.32*mouth*w); x=q[0]; y=q[1]; }
+    }
     var p=[x,y];
     if(b) p=b.c==='n'?onChain(NECK,NC,b,x,y):onChain(TAILJ,TC,b,x,y);
     x=p[0]; y=p[1];
@@ -151,6 +161,7 @@ var BossGL=(function(){
     if(!ok || document.hidden || !cv.offsetParent || now-last<33) return; // 30コマ／秒。見えていないときは描かない
     last=now; size();
     var t=(now-t0)/1000, talk=window.bossMouth?bossMouth():0, pos=[];
+    mouth+=(talk-mouth)*(talk>mouth?0.7:0.45); if(mouth<0.02) mouth=0; // 開くのは速く、閉じるのは少しゆっくり
     // ときどき（20〜45秒おき）大きく動く。話している間は、見回しと会釈だけ
     // 画面の外まで出る大きな動きは、黙っているときに1〜2分に1回
     if(!act && !awayTo && talk<0.05 && t>nextBig){ var bp=['peek','dive','close','leap']; doAct(bp[Math.floor(Math.random()*bp.length)]); nextBig=t+60+Math.random()*60; nextIdle=Math.max(nextIdle,t+12); }
@@ -173,11 +184,18 @@ var BossGL=(function(){
   var cur={};
   function overlay(t,m){
     var k=fx.width/CS; g2.setTransform(k,0,0,k,-C0[0]*k,-C0[1]*k); g2.clearRect(0,0,S,S);
-    if(m>0.05){
-      var L=deform(MOUTH_L[0],MOUTH_L[1],t,cur), R=deform(MOUTH_R[0],MOUTH_R[1],t,cur), mx=(L[0]+R[0])/2, my=(L[1]+R[1])/2, h=3+m*11;
-      g2.beginPath(); g2.moveTo(L[0],L[1]); g2.quadraticCurveTo(mx,my+3,R[0],R[1]); g2.quadraticCurveTo(mx+2,my+h*1.6,L[0],L[1]); g2.closePath();
-      g2.fillStyle='#4A1A1E'; g2.fill(); g2.lineWidth=2; g2.strokeStyle='#1B1611'; g2.stroke();
-      g2.save(); g2.clip(); g2.beginPath(); g2.ellipse(mx+3,my+h*1.3,h*1.1,h*0.6,0,0,7); g2.fillStyle='#C9544E'; g2.fill(); g2.restore();
+    // 口の中: 上くちびる（動かない線）と、下へ回った下くちびるのあいだを暗く塗る
+    if(mouth>0.05){
+      var save=mouth; mouth=0; // 線そのものはあごの回転を受けない
+      var up=LIP.map(function(p){ return deform(p[0],p[1],t,cur); });
+      var lo=LIP.map(function(p){ var q=jawAt(p[0],p[1],-0.32*save*jawW(p[0])); return deform(q[0],q[1],t,cur); });
+      mouth=save;
+      g2.beginPath(); up.forEach(function(p,i){ i?g2.lineTo(p[0],p[1]):g2.moveTo(p[0],p[1]); }); for(var i=lo.length-1;i>=0;i--) g2.lineTo(lo[i][0],lo[i][1]); g2.closePath();
+      g2.fillStyle='#3A1215'; g2.fill();
+      g2.save(); g2.clip(); var c=lo[2]; g2.beginPath(); g2.ellipse(c[0]+4,c[1]-1,16,7*save+2,-0.15,0,7); g2.fillStyle='#C9544E'; g2.fill(); g2.restore();
+      g2.lineWidth=2.4; g2.lineJoin='round'; g2.strokeStyle='#1B1611';
+      g2.beginPath(); lo.forEach(function(p,i){ i?g2.lineTo(p[0],p[1]):g2.moveTo(p[0],p[1]); }); g2.stroke();
+      g2.beginPath(); up.forEach(function(p,i){ i?g2.lineTo(p[0],p[1]):g2.moveTo(p[0],p[1]); }); g2.stroke();
     }
     // まばたき: 2.5〜6秒おきに0.14秒
     var now=t*1000; if(now>blinkAt+140 && Math.random()<0.012) blinkAt=now;
@@ -189,14 +207,15 @@ var BossGL=(function(){
     }
   }
   // 確認用: 指定した動きの、指定した瞬間を1コマ描く（{wx,wy,ws} を返す）
-  function snap(name,u,t){
-    var A=name?ACTS[name].f(u):{}; t=t||0; cur=A; size(); pose(t,0,A);
+  function snap(name,u,t,m){
+    var A=name?ACTS[name].f(u):{}; t=t||0; cur=A; mouth=m||0; size(); pose(t,mouth>0.05?1:0,A);
     if(!BIND){ BIND=[]; for(var jj=0;jj<=N;jj++) for(var ii=0;ii<=N;ii++) BIND.push(bind(ii*S/N,jj*S/N)); }
     var pos=[]; for(var j=0,q=0;j<=N;j++) for(var i=0;i<=N;i++,q++){ var p=deform(i*S/N,j*S/N,t,A,BIND[q]); pos.push(p[0],p[1]); }
     gl.viewport(0,0,cv.width,cv.height); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
     gl.bindBuffer(gl.ARRAY_BUFFER,buf); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(pos),gl.DYNAMIC_DRAW);
     var lp=gl.getAttribLocation(prog,'p'); gl.enableVertexAttribArray(lp); gl.vertexAttribPointer(lp,2,gl.FLOAT,false,0,0);
     gl.drawElements(gl.TRIANGLES,nIdx,gl.UNSIGNED_SHORT,0);
+    overlay(t,mouth);
     return {wx:A.wx||0, wy:A.wy||0, ws:A.ws||1};
   }
   return {init:init, act:doAct, leave:leave, enter:enter, snap:snap, ready:function(){ return ok; }};

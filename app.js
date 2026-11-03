@@ -88,12 +88,17 @@ function clip(f){
 function sentences(t){ return (String(t||'').match(/[^。！？]+[。！？]*」?/g)||[]).map(function(s){return s.trim();}).filter(Boolean); }
 function reading(s){ READ.forEach(function(r){ s=s.replace(r[0],r[1]); }); return s; }
 // how open the commander's mouth is now (0..1): from the loudness of the recording (voice/env.json, 25 steps a second)
-var curFile=null, VOICE_ENV={};
+var curFile=null, VOICE_ENV={}, playStart=0;
+player.addEventListener('playing',function(){ playStart=performance.now(); });
 fetch('voice/env.json').then(function(r){return r.json();}).then(function(j){VOICE_ENV=j;}).catch(function(){});
 function bossMouth(){
   if(!speaking || !$('bossBox').classList.contains('talking')) return 0;
   var e=curFile&&VOICE_ENV[curFile];
-  if(e && !player.paused){ var k=Math.floor(player.currentTime*25); return k<e.length?(+e[k])/9:0; }
+  if(e && !player.paused){
+    // 再生位置が取れない端末では、鳴り始めてからの時間で代わりにする
+    var pt=player.currentTime>0.05?player.currentTime:(playStart?(performance.now()-playStart)/1000:0), k=Math.floor(pt*25);
+    return k<e.length?(+e[k])/9:0;
+  }
   return 0.35+0.35*Math.sin(Date.now()/90); // the phone's own voice: no recording to follow
 }
 function fileOf(it){ return it.pause||it.music?null:it.sfx?VOICE.sfx[it.sfx]:(VOICE[it.who]||{})[it.t]; }
