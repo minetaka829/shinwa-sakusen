@@ -25,5 +25,5 @@ img.onload = async () => {
   await fetch('/out/boss.png', { method: 'POST', body: b });
   document.title = 'done';
 };
-img.src = 'C.png';
+img.src = new URLSearchParams(location.search).get('src') || 'C.png';
 </script>

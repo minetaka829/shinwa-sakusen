@@ -6,16 +6,17 @@
    座標は boss.png（768×768）の画素。 */
 var BossGL=(function(){
   var S=768, N=72, C0=[76,40], CS=640; // 絵のまわりの余白を切りつめて表示する範囲（左上と一辺）
-  var EYE=[289,189];
+  // 目: [中心x, 中心y, 横の半径, 縦の半径]。大きい方（右）と、サングラスのふちの小さい方（左）
+  var EYES=[[357,192,17,18],[286,191,7,14]], HEADC=[335,215];
   // 口: 絵の口の線（左＝鼻先側から右＝口角）と、あごの付け根。話すとあごを付け根のまわりに下へ回して開く
-  var LIP=[[278,259],[292,263],[306,264],[322,262],[338,258],[352,254]], HINGE=[356,256], mouth=0;
+  var LIP=[[282,258],[296,262],[310,263],[324,259],[338,253],[350,247]], HINGE=[356,248], mouth=0;
   function lipY(x){ for(var k=0;k<LIP.length-1;k++) if(x<=LIP[k+1][0]) return LIP[k][1]+(LIP[k+1][1]-LIP[k][1])*Math.max(0,(x-LIP[k][0])/(LIP[k+1][0]-LIP[k][0])); return LIP[LIP.length-1][1]; }
   function jawW(x){ return sm(256,270,x)*(1-sm(346,360,x)); }
   function jawAt(x,y,a){ var dx=x-HINGE[0], dy=y-HINGE[1], c=Math.cos(a), s=Math.sin(a); return [HINGE[0]+dx*c-dy*s, HINGE[1]+dx*s+dy*c]; }
   // 背骨: 首（とぐろの手前から頭のてっぺんまで）としっぽの先。この線に関節を並べて曲げる
   var NECK=[[300,500],[302,432],[330,372],[358,318],[352,262],[330,190]];
   var TAILJ=[[592,500],[568,445],[572,400],[588,352]];
-  var gl, prog, buf, uvBuf, idx, nIdx, cv, fx, g2, img, skin='#EAF4F0', ok=false, t0=performance.now(), last=0, blinkAt=0;
+  var gl, prog, buf, uvBuf, idx, nIdx, cv, fx, g2, img, skinAt=['#EAF4F0','#EAF4F0'], ok=false, t0=performance.now(), last=0, blinkAt=0;
   function sm(a,b,x){ var t=Math.max(0,Math.min(1,(x-a)/(b-a))); return t*t*(3-2*t); }
   function bell(u){ return Math.sin(Math.PI*Math.max(0,Math.min(1,u))); }
   function ease(u){ u=Math.max(0,Math.min(1,u)); return u*u*(3-2*u); }
@@ -58,7 +59,13 @@ var BossGL=(function(){
      nk=首の関節ごとの曲げ（−で頭が前＝左へ） len=首の伸び tl=しっぽの振り jy=跳ね sq=着地のつぶれ
      wx,wy=絵全体の移動（絵の大きさに対する割合） ws=拡大 */
   var ACTS={
-    look:{d:3.2,f:function(u){ var k=Math.sin(u*Math.PI*2)*bell(u); return {nk:[0,0,0.05*k,0.1*k,0.2*k]}; }},
+    // 見回す: 首を振って頭を左へ、次に右へ。顔の向きも変える（yaw: −で左向き、＋で右＝こちら向き）
+    look:{d:4.4,f:function(u){
+      var s=u<0.42?-seg(u,0.02,0.18):u<0.85?-1+2*seg(u,0.42,0.6):1-seg(u,0.85,1);
+      return {yaw:s, nk:[0,0.09*s,0.07*s,-0.03*s,-0.05*s]};
+    }},
+    // ウインク（大きい方の目）
+    wink:{d:0.9,f:function(u){ return {wink:bell(seg(u,0.05,0.95)), nk:[0,0,0,0.03*bell(u),0.05*bell(u)]}; }},
     bow:{d:1.8,f:function(u){ var b=bell(u)*bell(u); return {nk:[0,0,-0.08*b,-0.14*b,-0.2*b]}; }},
     stretch:{d:2.4,f:function(u){ var b=bell(u); return {len:1+0.12*b, nk:[0,0.03*b,-0.02*b,0.04*b,0.06*b]}; }},
     hop:{d:1.1,f:function(u){ var air=bell(seg(u,0.15,0.75)), crouch=u<0.15?bell(u/0.15):0, land=u>0.75?bell((u-0.75)/0.25):0;
@@ -113,6 +120,11 @@ var BossGL=(function(){
     var p=[x,y];
     if(b) p=b.c==='n'?onChain(NECK,NC,b,x,y):onChain(TAILJ,TC,b,x,y);
     x=p[0]; y=p[1];
+    // 顔の向き: 頭の部分だけ、向いた側へ寄せて、反対側を少し縮める
+    if(A.yaw && b && b.c==='n' && b.s>0.7){
+      var hw=sm(0.7,0.85,b.s), hc=onChain(NECK,NC,HB,HEADC[0],HEADC[1]), dxh=x-hc[0], yw=A.yaw;
+      x=hc[0]+dxh*(1-0.16*Math.abs(yw)*hw)+yw*20*hw*(1-Math.min(1,Math.abs(dxh)/90));
+    }
     // マントの裾は少しなびく
     if(b&&b.c==='n'&&x>370&&y>330) x+=4*sm(330,480,y)*Math.sin(t*1.9+y*0.02);
     // 息と着地のつぶれ（とぐろの底を基準に）
@@ -120,7 +132,7 @@ var BossGL=(function(){
     x=384+(x-384)*(1+0.004*br+sq*0.6); y=700+(y-700)*(1+0.011*br-sq)+(A.jy||0);
     return [x,y];
   }
-  var BIND=null;
+  var BIND=null, HB=null;
   function shader(type,src){ var s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s); return s; }
   function init(canvas,overlay){
     cv=canvas; fx=overlay; g2=fx.getContext('2d');
@@ -145,8 +157,9 @@ var BossGL=(function(){
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
       gl.enable(gl.BLEND); gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
-      // まぶたの色は、目の上の肌の色をそのまま使う
-      try{ var c=document.createElement('canvas'); c.width=c.height=S; var x=c.getContext('2d'); x.drawImage(img,0,0); var d=x.getImageData(EYE[0],EYE[1]-20,1,1).data; skin='rgb('+d[0]+','+d[1]+','+d[2]+')'; }catch(e){}
+      // まぶたの色は、目のすぐ横の肌の色をそのまま使う
+      try{ var c=document.createElement('canvas'); c.width=c.height=S; var x=c.getContext('2d'); x.drawImage(img,0,0);
+        EYES.forEach(function(e,i){ var d=x.getImageData(e[0]-e[2]-3,e[1],1,1).data; skinAt[i]='rgb('+d[0]+','+d[1]+','+d[2]+')'; }); }catch(e){}
       ok=true; requestAnimationFrame(frame);
     };
     img.src='boss.png';
@@ -165,13 +178,14 @@ var BossGL=(function(){
     // ときどき（20〜45秒おき）大きく動く。話している間は、見回しと会釈だけ
     // 画面の外まで出る大きな動きは、黙っているときに1〜2分に1回
     if(!act && !awayTo && talk<0.05 && t>nextBig){ var bp=['peek','dive','close','leap']; doAct(bp[Math.floor(Math.random()*bp.length)]); nextBig=t+60+Math.random()*60; nextIdle=Math.max(nextIdle,t+12); }
-    if(!act && t>nextIdle){ var pick=talk>0.05?['look','bow']:['look','bow','stretch','hop','wag','look']; doAct(pick[Math.floor(Math.random()*pick.length)]); nextIdle=t+20+Math.random()*25; }
+    if(!act && t>nextIdle){ var pick=talk>0.05?['look','bow','wink']:['look','bow','stretch','hop','wag','look','wink']; doAct(pick[Math.floor(Math.random()*pick.length)]); nextIdle=t+20+Math.random()*25; }
     var A={}; if(act){ var u=(now-actAt)/1000/act.d; if(u>=1) act=null; else A=act.f(u); }
     var dt=Math.min(0.2,(now-(frame.prev||now))/1000); frame.prev=now;
     away+=(awayTo-away)*Math.min(1,dt*2.2); if(Math.abs(awayTo-away)<0.002) away=awayTo; // 1.5秒ほどで去る／現れる
     var wx=(A.wx||0)+away*1.4, wy=A.wy||0, ws=A.ws||1;
     cv.parentNode.style.transform=(wx||wy||ws!==1)?'translate('+(wx*100).toFixed(1)+'%,'+(wy*100).toFixed(1)+'%) scale('+ws.toFixed(3)+')':'';
     cur=A; pose(t,talk>0.05?1:0,A);
+    if(!HB) HB=bind(HEADC[0],HEADC[1]);
     if(!BIND){ BIND=[]; for(var jj=0;jj<=N;jj++) for(var ii=0;ii<=N;ii++) BIND.push(bind(ii*S/N,jj*S/N)); }
     for(var j=0,q=0;j<=N;j++) for(var i=0;i<=N;i++,q++){ var p=deform(i*S/N,j*S/N,t,A,BIND[q]); pos.push(p[0],p[1]); }
     gl.viewport(0,0,cv.width,cv.height); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
@@ -197,18 +211,22 @@ var BossGL=(function(){
       g2.beginPath(); lo.forEach(function(p,i){ i?g2.lineTo(p[0],p[1]):g2.moveTo(p[0],p[1]); }); g2.stroke();
       g2.beginPath(); up.forEach(function(p,i){ i?g2.lineTo(p[0],p[1]):g2.moveTo(p[0],p[1]); }); g2.stroke();
     }
-    // まばたき: 2.5〜6秒おきに0.14秒
+    // まばたき（両目）とウインク（大きい方の目）。2.5〜6秒おきに0.14秒
     var now=t*1000; if(now>blinkAt+140 && Math.random()<0.012) blinkAt=now;
-    var bk=now-blinkAt; if(bk<140){
-      var f=Math.sin(Math.PI*bk/140), E=deform(EYE[0],EYE[1],t,cur);
-      g2.save(); g2.beginPath(); g2.ellipse(E[0],E[1],11,15,-0.2,0,7); g2.clip();
-      g2.fillStyle=skin; g2.fillRect(E[0]-12,E[1]-16,24,32*f);
-      g2.strokeStyle='#1B1611'; g2.lineWidth=2.2; g2.beginPath(); g2.moveTo(E[0]-10,E[1]-16+30*f); g2.quadraticCurveTo(E[0],E[1]-12+32*f,E[0]+10,E[1]-16+30*f); g2.stroke(); g2.restore();
-    }
+    var bk=now-blinkAt, f=bk<140?Math.sin(Math.PI*bk/140):0;
+    EYES.forEach(function(e,i){
+      var c=Math.max(f, i===0?(cur.wink||0):0); if(c<0.02) return;
+      var E=deform(e[0],e[1],t,cur), rx=e[2]+2, ry=e[3]+2;
+      g2.save(); g2.beginPath(); g2.ellipse(E[0],E[1],rx,ry,0,0,7); g2.clip();
+      g2.fillStyle=skinAt[i]; g2.fillRect(E[0]-rx,E[1]-ry,rx*2,ry*2*c);
+      g2.strokeStyle='#1B1611'; g2.lineWidth=2.4; g2.lineCap='round'; var ly=E[1]-ry+ry*2*c;
+      g2.beginPath(); g2.moveTo(E[0]-rx+1,ly-2*c); g2.quadraticCurveTo(E[0],ly+4*c,E[0]+rx-1,ly-2*c); g2.stroke(); g2.restore();
+    });
   }
   // 確認用: 指定した動きの、指定した瞬間を1コマ描く（{wx,wy,ws} を返す）
   function snap(name,u,t,m){
     var A=name?ACTS[name].f(u):{}; t=t||0; cur=A; mouth=m||0; size(); pose(t,mouth>0.05?1:0,A);
+    if(!HB) HB=bind(HEADC[0],HEADC[1]);
     if(!BIND){ BIND=[]; for(var jj=0;jj<=N;jj++) for(var ii=0;ii<=N;ii++) BIND.push(bind(ii*S/N,jj*S/N)); }
     var pos=[]; for(var j=0,q=0;j<=N;j++) for(var i=0;i<=N;i++,q++){ var p=deform(i*S/N,j*S/N,t,A,BIND[q]); pos.push(p[0],p[1]); }
     gl.viewport(0,0,cv.width,cv.height); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
