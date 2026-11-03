@@ -1,5 +1,5 @@
 // Offline cache for the app shell (mountain areas may have weak signal).
-const CACHE = 'mythops-v8';
+const CACHE = 'mythops-v9';
 const VOICE_CACHE = 'mythops-voice';
 const SHELL = ['./', './index.html', './story.js', './route.js', './plot.js', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-180.png'];
 
@@ -16,6 +16,13 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+function timeout(p, ms) {
+  return new Promise((ok, ng) => {
+    const t = setTimeout(() => ng('timeout'), ms);
+    p.then((r) => { clearTimeout(t); ok(r); }, (err) => { clearTimeout(t); ng(err); });
+  });
+}
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
@@ -28,14 +35,15 @@ self.addEventListener('fetch', (e) => {
       return res;
     })));
   } else if (url.origin === location.origin) {
-    // network first (skipping the browser's HTTP cache) so updates arrive, cache as fallback when offline
-    e.respondWith(
-      fetch(req, { cache: 'no-cache' }).then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(req, copy));
-        return res;
-      }).catch(() => caches.match(req).then((r) => r || caches.match('./index.html')))
-    );
+    // network first (skipping the browser's HTTP cache) so updates arrive; on a slow mountain
+    // connection give up after 3 s and use the saved copy, while the download goes on to refresh it
+    const net = fetch(req, { cache: 'no-cache' }).then((res) => {
+      if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
+      return res;
+    });
+    e.waitUntil(net.catch(() => {}));
+    e.respondWith(timeout(net, 3000).catch(() =>
+      caches.match(req, { ignoreSearch: true }).then((r) => r || caches.match('./index.html')).then((r) => r || net)));
   } else if (url.hostname.endsWith('fonts.googleapis.com') || url.hostname.endsWith('fonts.gstatic.com')) {
     e.respondWith(
       caches.match(req).then((r) => r || fetch(req).then((res) => {
